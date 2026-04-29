@@ -5,13 +5,11 @@ import java.io.IOException
 import java.io.ObjectOutputStream
 import java.net.ServerSocket
 import java.net.Socket
-import java.util.HashSet
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentMap
 
 class ConnectionManager(serverPort: Int) {
     private val serverSocket: ServerSocket = ServerSocket(serverPort)
-    private val clients: ConcurrentMap<String, Socket> = ConcurrentHashMap()
+    private val clients: ConcurrentHashMap<String, Socket> = ConcurrentHashMap()
     private var clientConnectionListener: ClientConnectionListener? = null
     @Volatile private var running = true
 
@@ -23,7 +21,7 @@ class ConnectionManager(serverPort: Int) {
                     val clientSocket = serverSocket.accept()
                     val clientId = "${clientSocket.inetAddress.hostAddress}:${clientSocket.port}"
                     clients[clientId] = clientSocket
-                    clientConnectionListener.onConnected(clientId)
+                    clientConnectionListener.onConnected(clientId, clientSocket)
                 } catch (e: IOException) {
                     if (running) {
                         log.error("Error accepting connection: ${e.message}")
@@ -33,29 +31,7 @@ class ConnectionManager(serverPort: Int) {
         }.start()
     }
 
-    fun getActiveClients(): Set<String> {
-        return HashSet(clients.keys)
-    }
-
-    @Throws(IOException::class)
-    fun sendMessage(clientId: String, message: Any) {
-        val clientSocket: Socket = clients[clientId] ?: throw IllegalArgumentException("Client not found: $clientId")
-        try {
-            val out = ObjectOutputStream(clientSocket.getOutputStream())
-            out.writeObject(message)
-            out.flush()
-        } catch (e: IOException) {
-            if (!isConnected(clientSocket)) {
-                disconnectClient(clientId)
-            } else {
-                throw e
-            }
-        }
-    }
-
-    private fun isConnected(socket: Socket): Boolean {
-        return !socket.isClosed && socket.isConnected && !socket.isInputShutdown
-    }
+    fun getActiveClients(): Set<String> = HashSet(clients.keys)
 
     private fun disconnectClient(clientId: String) {
         clients.remove(clientId)

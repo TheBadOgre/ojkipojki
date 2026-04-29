@@ -10,4 +10,6 @@ fun main() {
 
     ClientRunner.startClient("localhost", 12002)
 
+    ClientRunner.startClient("localhost", 12002)
+
 }
