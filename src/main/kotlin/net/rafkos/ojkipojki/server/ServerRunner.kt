@@ -1,5 +1,6 @@
 package net.rafkos.ojkipojki.server
 
+import net.rafkos.ojkipojki.server.application.ModelRepository
 import net.rafkos.ojkipojki.server.protocol.ClientSessionManager
 import net.rafkos.ojkipojki.server.protocol.ConnectionManager
 import net.rafkos.ojkipojki.server.protocol.command.CommandDispatcher
@@ -12,13 +13,15 @@ object ServerRunner {
     fun startServer(serverPort: Int) {
         log.info("Starting server on port $serverPort")
 
+        ServerContext.modelRepository = ModelRepository()
+
         val connectionManager = ConnectionManager(serverPort)
 
         lateinit var sessionManager: ClientSessionManager
 
-        val broadcastService = EventBroadcastService(sessionManagerProvider = { sessionManager })
-        val commandDispatcher = CommandDispatcher(broadcastService)
-        sessionManager = ClientSessionManager(commandDispatcher)
+        ServerContext.eventBroadcastService = EventBroadcastService(sessionManagerProvider = { sessionManager })
+        ServerContext.commandDispatcher = CommandDispatcher()
+        sessionManager = ClientSessionManager()
 
         connectionManager.startAcceptingConnections(sessionManager)
 

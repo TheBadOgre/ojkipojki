@@ -1,7 +1,6 @@
 package net.rafkos.ojkipojki.client.protocol
 
 import net.rafkos.ojkipojki.client.command.CommandTransmitter
-import net.rafkos.ojkipojki.client.protocol.event.EventDispatcher
 import net.rafkos.ojkipojki.client.protocol.event.EventReceiver
 import org.apache.logging.log4j.LogManager
 import java.net.Socket
@@ -14,9 +13,8 @@ class ClientSession(
     private var transmitter: CommandTransmitter? = null
 
     override fun onConnected(socket: Socket) {
-        val eventDispatcher = EventDispatcher()
         transmitter = CommandTransmitter(socket)
-        receiver = EventReceiver(socket, eventDispatcher).also { it.start() }
+        receiver = EventReceiver(socket).also { it.start() }
         log.info("Session started — receiver and transmitter ready")
         applicationHandler.onSessionReady(transmitter!!)
     }

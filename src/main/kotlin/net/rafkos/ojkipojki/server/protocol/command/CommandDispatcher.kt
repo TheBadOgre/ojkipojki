@@ -1,16 +1,12 @@
 package net.rafkos.ojkipojki.server.protocol.command
 
-import net.rafkos.ojkipojki.server.protocol.event.EventBroadcastService
 import net.rafkos.ojkipojki.shared.protocol.Dispatcher
 import net.rafkos.ojkipojki.shared.protocol.Handler
 import net.rafkos.ojkipojki.shared.protocol.command.Command
-import net.rafkos.ojkipojki.server.protocol.command.UploadSpriteBagCommandHandler
-import net.rafkos.ojkipojki.shared.protocol.command.UploadSpriteBagCommand
+import net.rafkos.ojkipojki.shared.protocol.command.UploadSpriteBagsCommand
 
-class CommandDispatcher(
-    eventBroadcastService: EventBroadcastService
-) : Dispatcher<Command>(
+class CommandDispatcher : Dispatcher<Command>(
     mapOf(
-        UploadSpriteBagCommand::class to UploadSpriteBagCommandHandler(eventBroadcastService) as Handler<in Command>
+        UploadSpriteBagsCommand::class to UploadSpriteBagsCommandHandler() as Handler<in Command>
     )
 )

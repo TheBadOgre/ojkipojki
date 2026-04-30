@@ -1,15 +1,12 @@
 package net.rafkos.ojkipojki.server.protocol
 
-import net.rafkos.ojkipojki.server.protocol.command.CommandDispatcher
 import net.rafkos.ojkipojki.server.protocol.command.CommandReceiver
 import net.rafkos.ojkipojki.server.protocol.event.EventTransmitter
 import org.apache.logging.log4j.LogManager
 import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap
 
-class ClientSessionManager(
-    private val commandDispatcher: CommandDispatcher
-) : ClientConnectionListener {
+class ClientSessionManager : ClientConnectionListener {
 
     private val sessions = ConcurrentHashMap<String, ClientSession>()
 
@@ -17,7 +14,6 @@ class ClientSessionManager(
         val transmitter = EventTransmitter(socket)
         val receiver = CommandReceiver(
             socket = socket,
-            commandDispatcher = commandDispatcher,
             onDisconnected = { onClientDisconnected(clientId) }
         )
         sessions[clientId] = ClientSession(receiver, transmitter)
