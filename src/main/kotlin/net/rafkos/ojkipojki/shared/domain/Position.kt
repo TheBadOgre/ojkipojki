@@ -1,3 +1,5 @@
 package net.rafkos.ojkipojki.shared.domain
 
-data class Position(val x: Int, val y: Int)
+import java.io.Serializable
+
+data class Position(val x: Int, val y: Int) : Serializable

@@ -1,5 +1,6 @@
 package net.rafkos.ojkipojki.client
 
+import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.protocol.ApplicationHandler
 import net.rafkos.ojkipojki.client.protocol.ClientSession
 import net.rafkos.ojkipojki.client.protocol.ServerConnection
@@ -13,6 +14,7 @@ object ClientRunner {
         log.info("Starting client, connecting to $serverHost:$serverPort")
 
         ClientContext.eventDispatcher = EventDispatcher()
+        ClientContext.stateRepository = StateRepository()
 
         val clientSession = ClientSession(ApplicationHandler())
         val serverConnection = ServerConnection(serverHost, serverPort, clientSession)

@@ -1,5 +1,7 @@
 package net.rafkos.ojkipojki.shared.domain
 
+import java.io.Serializable
+
 data class Token(
     val id: TokenId,
     val spriteId: SpriteId,
@@ -7,4 +9,4 @@ data class Token(
     val rotation: Rotation = Rotation(0.0),
     val index: Index = Index(0),
     val flipped: Boolean = false
-)
+) : Serializable

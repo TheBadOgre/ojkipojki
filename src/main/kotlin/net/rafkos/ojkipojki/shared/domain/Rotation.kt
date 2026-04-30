@@ -1,3 +1,5 @@
 package net.rafkos.ojkipojki.shared.domain
 
-data class Rotation(val degrees: Double)
+import java.io.Serializable
+
+data class Rotation(val degrees: Double) : Serializable
