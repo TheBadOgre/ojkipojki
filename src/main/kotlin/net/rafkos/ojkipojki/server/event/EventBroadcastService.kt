@@ -20,6 +20,7 @@ class EventBroadcastService(
         }
     }
 
+    @Synchronized
     fun broadcast(event: Event, clientId: String) {
         log.info("About to send event ${event.javaClass.simpleName} to $clientId")
         try {

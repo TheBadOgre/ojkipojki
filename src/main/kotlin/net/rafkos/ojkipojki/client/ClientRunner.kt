@@ -21,7 +21,7 @@ object ClientRunner {
 
         eventReceiver.start()
 
-        connectionListener.onConnected(socket)
+        connectionListener.onConnected()
 
         Runtime.getRuntime().addShutdownHook(Thread {
             connectionListener.onDisconnected()
