@@ -6,5 +6,6 @@ import java.net.Socket
 
 class CommandReceiver(
     socket: Socket,
-    commandDispatcher: CommandDispatcher
-) : Receiver<Command>(socket, commandDispatcher)
+    commandDispatcher: CommandDispatcher,
+    onDisconnected: (() -> Unit)? = null
+) : Receiver<Command>(socket, commandDispatcher, onDisconnected)

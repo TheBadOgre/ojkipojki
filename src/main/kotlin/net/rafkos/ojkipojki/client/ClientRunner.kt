@@ -1,30 +1,33 @@
 package net.rafkos.ojkipojki.client
 
 import net.rafkos.ojkipojki.client.command.CommandTransmitter
-import net.rafkos.ojkipojki.client.event.EventDispatcher
-import net.rafkos.ojkipojki.client.event.EventReceiver
+import net.rafkos.ojkipojki.shared.command.DummyCommand
 import org.apache.logging.log4j.LogManager
-import java.net.Socket
 
 object ClientRunner {
     private val log = LogManager.getLogger(ClientRunner::class.java)
 
     fun startClient(serverHost: String, serverPort: Int) {
-        log.info("About to start client")
+        log.info("Starting client, connecting to $serverHost:$serverPort")
 
-        val socket = Socket(serverHost, serverPort)
-        val eventDispatcher = EventDispatcher()
-        val eventReceiver = EventReceiver(socket, eventDispatcher)
+        val applicationHandler = object : ApplicationHandler {
+            override fun onSessionReady(transmitter: CommandTransmitter) {
+                log.info("Session ready — sending initial command")
+                transmitter.transmit(DummyCommand("test"))
+            }
 
-        val commandTransmitter = CommandTransmitter(socket)
-        val connectionListener = ServerConnectionListener(commandTransmitter)
+            override fun onSessionClosed() {
+                log.info("Session closed")
+            }
+        }
 
-        eventReceiver.start()
+        val clientSession = ClientSession(applicationHandler)
+        val serverConnection = ServerConnection(serverHost, serverPort, clientSession)
 
-        connectionListener.onConnected()
+        serverConnection.connect()
 
         Runtime.getRuntime().addShutdownHook(Thread {
-            connectionListener.onDisconnected()
+            serverConnection.disconnect()
         })
     }
 }

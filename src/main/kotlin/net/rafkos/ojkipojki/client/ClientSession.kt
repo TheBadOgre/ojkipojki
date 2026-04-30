@@ -1,0 +1,35 @@
+package net.rafkos.ojkipojki.client
+
+import net.rafkos.ojkipojki.client.command.CommandTransmitter
+import net.rafkos.ojkipojki.client.event.EventDispatcher
+import net.rafkos.ojkipojki.client.event.EventReceiver
+import org.apache.logging.log4j.LogManager
+import java.net.Socket
+
+class ClientSession(
+    private val applicationHandler: ApplicationHandler
+) : ServerConnectionListener {
+
+    private var receiver: EventReceiver? = null
+    private var transmitter: CommandTransmitter? = null
+
+    override fun onConnected(socket: Socket) {
+        val eventDispatcher = EventDispatcher()
+        transmitter = CommandTransmitter(socket)
+        receiver = EventReceiver(socket, eventDispatcher).also { it.start() }
+        log.info("Session started — receiver and transmitter ready")
+        applicationHandler.onSessionReady(transmitter!!)
+    }
+
+    override fun onDisconnected() {
+        receiver?.shutdown()
+        receiver = null
+        transmitter = null
+        log.info("Session torn down")
+        applicationHandler.onSessionClosed()
+    }
+
+    companion object {
+        private val log = LogManager.getLogger(ClientSession::class.java)
+    }
+}

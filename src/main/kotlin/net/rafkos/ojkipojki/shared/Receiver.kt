@@ -1,37 +1,37 @@
 package net.rafkos.ojkipojki.shared
 
-import net.rafkos.ojkipojki.client.event.EventReceiver
 import org.apache.logging.log4j.LogManager
 import java.io.ObjectInputStream
 import java.net.Socket
 
 abstract class Receiver<A : Any>(
     socket: Socket,
-    private val eventDispatcher: Dispatcher<A>,
+    private val dispatcher: Dispatcher<A>,
+    private val onDisconnected: (() -> Unit)? = null
 ) {
     private val inputStream = ObjectInputStream(socket.getInputStream())
-    private var running = true
+    @Volatile private var running = true
 
     fun start() {
         Thread {
             while (running) {
-                val event = receive()
-                if (event != null) {
-                    log.info("Received event: ${event.javaClass.simpleName}")
-                    eventDispatcher.dispatch(event)
+                val item = receive()
+                if (item != null) {
+                    log.info("Received: ${item.javaClass.simpleName}")
+                    dispatcher.dispatch(item)
                 } else {
                     running = false
+                    onDisconnected?.invoke()
                 }
             }
         }.start()
     }
 
-    fun receive(): A? {
-        return try {
-            inputStream.readObject() as? A
-        } catch (e: Exception) {
-            null
-        }
+    fun receive(): A? = try {
+        @Suppress("UNCHECKED_CAST")
+        inputStream.readObject() as? A
+    } catch (e: Exception) {
+        null
     }
 
     fun shutdown() {
@@ -39,6 +39,6 @@ abstract class Receiver<A : Any>(
     }
 
     companion object {
-        private val log = LogManager.getLogger(EventReceiver::class.java)
+        private val log = LogManager.getLogger(Receiver::class.java)
     }
 }
