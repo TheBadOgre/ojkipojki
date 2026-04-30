@@ -1,8 +1,9 @@
 package net.rafkos.ojkipojki.server
 
-import net.rafkos.ojkipojki.server.command.CommandDispatcher
-import net.rafkos.ojkipojki.server.event.EventBroadcastService
-import net.rafkos.ojkipojki.server.model.Model
+import net.rafkos.ojkipojki.server.protocol.ClientSessionManager
+import net.rafkos.ojkipojki.server.protocol.ConnectionManager
+import net.rafkos.ojkipojki.server.protocol.command.CommandDispatcher
+import net.rafkos.ojkipojki.server.protocol.event.EventBroadcastService
 import org.apache.logging.log4j.LogManager
 
 object ServerRunner {
@@ -11,13 +12,12 @@ object ServerRunner {
     fun startServer(serverPort: Int) {
         log.info("Starting server on port $serverPort")
 
-        val model = Model()
         val connectionManager = ConnectionManager(serverPort)
 
         lateinit var sessionManager: ClientSessionManager
 
         val broadcastService = EventBroadcastService(sessionManagerProvider = { sessionManager })
-        val commandDispatcher = CommandDispatcher(model, broadcastService)
+        val commandDispatcher = CommandDispatcher(broadcastService)
         sessionManager = ClientSessionManager(commandDispatcher)
 
         connectionManager.startAcceptingConnections(sessionManager)

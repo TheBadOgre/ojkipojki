@@ -1,17 +1,15 @@
-package net.rafkos.ojkipojki.server.command
+package net.rafkos.ojkipojki.server.protocol.command
 
-import net.rafkos.ojkipojki.server.event.EventBroadcastService
-import net.rafkos.ojkipojki.server.model.Model
+import net.rafkos.ojkipojki.server.protocol.event.EventBroadcastService
 import net.rafkos.ojkipojki.shared.Dispatcher
 import net.rafkos.ojkipojki.shared.Handler
 import net.rafkos.ojkipojki.shared.command.Command
 import net.rafkos.ojkipojki.shared.command.DummyCommand
 
 class CommandDispatcher(
-    model: Model,
     eventBroadcastService: EventBroadcastService
 ) : Dispatcher<Command>(
     mapOf(
-        DummyCommand::class to DummyCommandHandler(model, eventBroadcastService) as Handler<in Command>
+        DummyCommand::class to DummyCommandHandler(eventBroadcastService) as Handler<in Command>
     )
 )

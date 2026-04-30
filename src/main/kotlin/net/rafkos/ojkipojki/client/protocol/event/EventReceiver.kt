@@ -1,4 +1,4 @@
-package net.rafkos.ojkipojki.client.event
+package net.rafkos.ojkipojki.client.protocol.event
 
 import net.rafkos.ojkipojki.shared.Receiver
 import net.rafkos.ojkipojki.shared.event.Event

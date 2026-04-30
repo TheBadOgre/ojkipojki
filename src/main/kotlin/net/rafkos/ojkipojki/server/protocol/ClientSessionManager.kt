@@ -1,8 +1,8 @@
-package net.rafkos.ojkipojki.server
+package net.rafkos.ojkipojki.server.protocol
 
-import net.rafkos.ojkipojki.server.command.CommandDispatcher
-import net.rafkos.ojkipojki.server.command.CommandReceiver
-import net.rafkos.ojkipojki.server.event.EventTransmitter
+import net.rafkos.ojkipojki.server.protocol.command.CommandDispatcher
+import net.rafkos.ojkipojki.server.protocol.command.CommandReceiver
+import net.rafkos.ojkipojki.server.protocol.event.EventTransmitter
 import org.apache.logging.log4j.LogManager
 import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap

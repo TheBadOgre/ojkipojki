@@ -1,6 +1,9 @@
 package net.rafkos.ojkipojki.client
 
 import net.rafkos.ojkipojki.client.command.CommandTransmitter
+import net.rafkos.ojkipojki.client.protocol.ApplicationHandler
+import net.rafkos.ojkipojki.client.protocol.ClientSession
+import net.rafkos.ojkipojki.client.protocol.ServerConnection
 import net.rafkos.ojkipojki.shared.command.DummyCommand
 import org.apache.logging.log4j.LogManager
 

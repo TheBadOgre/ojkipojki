@@ -1,4 +1,4 @@
-package net.rafkos.ojkipojki.server.command
+package net.rafkos.ojkipojki.server.protocol.command
 
 import net.rafkos.ojkipojki.shared.Receiver
 import net.rafkos.ojkipojki.shared.command.Command

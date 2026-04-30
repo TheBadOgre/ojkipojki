@@ -1,4 +1,4 @@
-package net.rafkos.ojkipojki.client
+package net.rafkos.ojkipojki.client.protocol
 
 import org.apache.logging.log4j.LogManager
 import java.net.Socket

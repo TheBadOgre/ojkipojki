@@ -1,4 +1,4 @@
-package net.rafkos.ojkipojki.server
+package net.rafkos.ojkipojki.server.protocol
 
 import java.net.Socket
 

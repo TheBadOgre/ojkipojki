@@ -1,8 +1,8 @@
-package net.rafkos.ojkipojki.client
+package net.rafkos.ojkipojki.client.protocol
 
 import net.rafkos.ojkipojki.client.command.CommandTransmitter
-import net.rafkos.ojkipojki.client.event.EventDispatcher
-import net.rafkos.ojkipojki.client.event.EventReceiver
+import net.rafkos.ojkipojki.client.protocol.event.EventDispatcher
+import net.rafkos.ojkipojki.client.protocol.event.EventReceiver
 import org.apache.logging.log4j.LogManager
 import java.net.Socket
 
