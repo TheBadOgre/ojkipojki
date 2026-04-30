@@ -1,4 +1,4 @@
-package net.rafkos.ojkipojki.shared.command
+package net.rafkos.ojkipojki.shared.protocol.command
 
 import java.io.Serializable
 

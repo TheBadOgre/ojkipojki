@@ -1,3 +1,3 @@
-package net.rafkos.ojkipojki.shared.command
+package net.rafkos.ojkipojki.shared.protocol.command
 
 data class DummyCommand(val message: String) : Command

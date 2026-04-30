@@ -1,7 +1,7 @@
 package net.rafkos.ojkipojki.server.protocol.event
 
 import net.rafkos.ojkipojki.server.protocol.ClientSessionManager
-import net.rafkos.ojkipojki.shared.event.Event
+import net.rafkos.ojkipojki.shared.protocol.event.Event
 import org.apache.logging.log4j.LogManager
 
 class EventBroadcastService(

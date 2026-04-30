@@ -1,4 +1,4 @@
-package net.rafkos.ojkipojki.shared.event
+package net.rafkos.ojkipojki.shared.protocol.event
 
 import java.io.Serializable
 

@@ -1,10 +1,10 @@
 package net.rafkos.ojkipojki.server.protocol.command
 
 import net.rafkos.ojkipojki.server.protocol.event.EventBroadcastService
-import net.rafkos.ojkipojki.shared.Dispatcher
-import net.rafkos.ojkipojki.shared.Handler
-import net.rafkos.ojkipojki.shared.command.Command
-import net.rafkos.ojkipojki.shared.command.DummyCommand
+import net.rafkos.ojkipojki.shared.protocol.Dispatcher
+import net.rafkos.ojkipojki.shared.protocol.Handler
+import net.rafkos.ojkipojki.shared.protocol.command.Command
+import net.rafkos.ojkipojki.shared.protocol.command.DummyCommand
 
 class CommandDispatcher(
     eventBroadcastService: EventBroadcastService

@@ -1,7 +1,7 @@
 package net.rafkos.ojkipojki.server.protocol.command
 
-import net.rafkos.ojkipojki.shared.Receiver
-import net.rafkos.ojkipojki.shared.command.Command
+import net.rafkos.ojkipojki.shared.protocol.Receiver
+import net.rafkos.ojkipojki.shared.protocol.command.Command
 import java.net.Socket
 
 class CommandReceiver(

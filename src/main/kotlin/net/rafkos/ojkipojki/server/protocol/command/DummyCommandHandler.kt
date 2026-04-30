@@ -1,8 +1,8 @@
 package net.rafkos.ojkipojki.server.protocol.command
 
 import net.rafkos.ojkipojki.server.protocol.event.EventBroadcastService
-import net.rafkos.ojkipojki.shared.Handler
-import net.rafkos.ojkipojki.shared.command.DummyCommand
+import net.rafkos.ojkipojki.shared.protocol.Handler
+import net.rafkos.ojkipojki.shared.protocol.command.DummyCommand
 import org.apache.logging.log4j.LogManager
 
 class DummyCommandHandler(

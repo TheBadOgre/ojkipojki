@@ -1,4 +1,4 @@
-package net.rafkos.ojkipojki.shared
+package net.rafkos.ojkipojki.shared.protocol
 
 import org.apache.logging.log4j.LogManager
 import kotlin.reflect.KClass

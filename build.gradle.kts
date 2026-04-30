@@ -17,7 +17,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("org.example.MainKt")
+    mainClass.set("net.rafkos.MainKt")
 }
 
 kotlin {

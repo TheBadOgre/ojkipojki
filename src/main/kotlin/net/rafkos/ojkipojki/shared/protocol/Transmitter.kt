@@ -1,4 +1,4 @@
-package net.rafkos.ojkipojki.shared
+package net.rafkos.ojkipojki.shared.protocol
 
 import java.io.ObjectOutputStream
 import java.net.Socket
