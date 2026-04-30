@@ -1,3 +1,10 @@
 package net.rafkos.ojkipojki.shared.domain
 
-data class SpriteId(val red: Int, val green: Int, val blue: Int)
+import java.io.Serializable
+
+data class SpriteId(
+    val spriteBagId: SpriteBagId,
+    val red: Int,
+    val green: Int,
+    val blue: Int
+) : Serializable

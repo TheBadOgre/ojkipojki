@@ -1,8 +1,7 @@
 package net.rafkos.ojkipojki.shared.domain
 
-import java.awt.image.BufferedImage
-
-data class Sprite(
+class Sprite(
     val id: SpriteId,
-    val image: BufferedImage
-)
+    val frontImageBytes: ByteArray,
+    val backImageBytes: ByteArray,
+) : java.io.Serializable
