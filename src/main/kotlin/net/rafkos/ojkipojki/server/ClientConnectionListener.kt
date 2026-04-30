@@ -21,6 +21,6 @@ class ClientConnectionListener(
     }
 
     companion object {
-        val log = LogManager.getLogger(ClientConnectionListener::class.java)
+        private val log = LogManager.getLogger(ClientConnectionListener::class.java)
     }
 }

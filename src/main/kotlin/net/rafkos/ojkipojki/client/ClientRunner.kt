@@ -3,7 +3,6 @@ package net.rafkos.ojkipojki.client
 import net.rafkos.ojkipojki.client.command.CommandTransmitter
 import net.rafkos.ojkipojki.client.event.EventDispatcher
 import net.rafkos.ojkipojki.client.event.EventReceiver
-import net.rafkos.ojkipojki.shared.command.DummyCommand
 import org.apache.logging.log4j.LogManager
 import java.net.Socket
 
@@ -16,15 +15,16 @@ object ClientRunner {
         val socket = Socket(serverHost, serverPort)
         val eventDispatcher = EventDispatcher()
         val eventReceiver = EventReceiver(socket, eventDispatcher)
+
         val commandTransmitter = CommandTransmitter(socket)
+        val connectionListener = ServerConnectionListener(commandTransmitter)
 
         eventReceiver.start()
 
-        // TODO remove
-        commandTransmitter.transmit(DummyCommand("test"))
+        connectionListener.onConnected(socket)
 
         Runtime.getRuntime().addShutdownHook(Thread {
-            socket.close()
+            connectionListener.onDisconnected()
         })
     }
 }
