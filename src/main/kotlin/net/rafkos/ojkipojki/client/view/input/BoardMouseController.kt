@@ -5,6 +5,7 @@ import net.rafkos.ojkipojki.client.view.action.CommandDebouncer
 import net.rafkos.ojkipojki.client.view.panel.BoardPanel
 import net.rafkos.ojkipojki.client.view.render.TokenRenderer
 import net.rafkos.ojkipojki.client.view.state.SelectionState
+import net.rafkos.ojkipojki.client.view.state.TokenAnimator
 import net.rafkos.ojkipojki.client.view.state.ViewportState
 import net.rafkos.ojkipojki.shared.domain.Position
 import net.rafkos.ojkipojki.shared.domain.Rotation
@@ -21,6 +22,7 @@ class BoardMouseController(
     private val viewportState: ViewportState,
     private val debouncer: CommandDebouncer,
     private val tokenRenderer: TokenRenderer,
+    private val tokenAnimator: TokenAnimator,
 ) : MouseAdapter() {
 
     private enum class Mode { IDLE, DRAG_TOKENS, RECT_SELECT, RECT_SELECT_ADDITIVE, RMB_ROTATE, MMB_PAN }
@@ -66,17 +68,20 @@ class BoardMouseController(
                 selectionState.replaceWith(listOf(token.id))
                 clickedTokenId = token.id
                 captureInitialPositions()
+                tokenAnimator.setImmediate(selectionState.selectedIds())
                 mode = Mode.DRAG_TOKENS
             }
             token != null && !selectionState.contains(token.id) && ctrlHeld -> {
                 selectionState.addAll(listOf(token.id))
                 clickedTokenId = token.id
                 captureInitialPositions()
+                tokenAnimator.setImmediate(selectionState.selectedIds())
                 mode = Mode.DRAG_TOKENS
             }
             token != null && selectionState.contains(token.id) -> {
                 clickedTokenId = token.id
                 captureInitialPositions()
+                tokenAnimator.setImmediate(selectionState.selectedIds())
                 mode = Mode.DRAG_TOKENS
             }
             token == null && !ctrlHeld -> {
@@ -135,6 +140,7 @@ class BoardMouseController(
         when (mode) {
             Mode.DRAG_TOKENS -> {
                 debouncer.flush()
+                tokenAnimator.clearImmediate()
                 if (!moved && ctrlHeld) clickedTokenId?.let { selectionState.toggle(it) }
             }
             Mode.RECT_SELECT, Mode.RECT_SELECT_ADDITIVE -> {

@@ -13,6 +13,7 @@ import net.rafkos.ojkipojki.client.view.panel.StatusBarPanel
 import net.rafkos.ojkipojki.client.view.panel.ToolbarPanel
 import net.rafkos.ojkipojki.client.view.render.TokenRenderer
 import net.rafkos.ojkipojki.client.view.state.SelectionState
+import net.rafkos.ojkipojki.client.view.state.TokenAnimator
 import net.rafkos.ojkipojki.client.view.state.ViewportState
 import java.awt.BorderLayout
 import java.awt.event.ActionEvent
@@ -34,20 +35,21 @@ class MainWindow(
 
     val boardPanel: BoardPanel
     val spriteBagListPanel: SpriteBagListPanel
+    val tokenAnimator: TokenAnimator = TokenAnimator()
 
     init {
         defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
         setSize(1200, 800)
 
         val tokenRenderer = TokenRenderer()
-        boardPanel = BoardPanel(stateRepository, selectionState, viewportState, tokenRenderer)
+        boardPanel = BoardPanel(stateRepository, selectionState, viewportState, tokenRenderer, tokenAnimator)
 
         val spawnHandler = SpriteBagSpawnHandler(transmitter, viewportState, boardPanel)
         val actions = BoardActions(stateRepository, selectionState, transmitter, debouncer)
 
         spriteBagListPanel = SpriteBagListPanel(spawnHandler)
 
-        val mouseController = BoardMouseController(boardPanel, stateRepository, selectionState, viewportState, debouncer, tokenRenderer)
+        val mouseController = BoardMouseController(boardPanel, stateRepository, selectionState, viewportState, debouncer, tokenRenderer, tokenAnimator)
         val wheelController = BoardWheelController(boardPanel, viewportState, selectionState, stateRepository, debouncer)
 
         boardPanel.addMouseListener(mouseController)

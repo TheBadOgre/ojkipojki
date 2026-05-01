@@ -4,6 +4,7 @@ import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.view.input.DragRectOverlay
 import net.rafkos.ojkipojki.client.view.render.TokenRenderer
 import net.rafkos.ojkipojki.client.view.state.SelectionState
+import net.rafkos.ojkipojki.client.view.state.TokenAnimator
 import net.rafkos.ojkipojki.client.view.state.ViewportState
 import java.awt.BasicStroke
 import java.awt.Color
@@ -11,17 +12,19 @@ import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
+import javax.swing.JPanel
+import javax.swing.Timer
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
-import javax.swing.JPanel
 
 class BoardPanel(
     val stateRepository: StateRepository,
     val selectionState: SelectionState,
     val viewportState: ViewportState,
     val tokenRenderer: TokenRenderer,
+    val tokenAnimator: TokenAnimator,
 ) : JPanel() {
 
     var dragRectOverlay: DragRectOverlay? = null
@@ -30,6 +33,11 @@ class BoardPanel(
         background = Color(48, 48, 48)
         preferredSize = Dimension(800, 600)
         isFocusable = true
+
+        Timer(16) {
+            tokenAnimator.tick(stateRepository.findAllTokens())
+            repaint()
+        }.start()
     }
 
     override fun paintComponent(g: Graphics) {
@@ -46,7 +54,8 @@ class BoardPanel(
         val tokens = stateRepository.findAllTokens().sortedBy { it.index.value }
         for (token in tokens) {
             val sprite = stateRepository.findSpriteById(token.spriteId) ?: continue
-            tokenRenderer.draw(g2, token, sprite, selectionState.contains(token.id), viewportState.zoom)
+            val visual = tokenAnimator.visualize(token)
+            tokenRenderer.draw(g2, visual, sprite, selectionState.contains(token.id), viewportState.zoom)
         }
 
         g2.transform = savedTransform
@@ -72,10 +81,8 @@ class BoardPanel(
         val worldTop    = (-h / 2.0) / zoom - oy
         val worldBottom = ( h / 2.0) / zoom - oy
 
-        val minPx      = 20.0
-        val rawSpacing = minPx / zoom
-        val spacing    = niceSpacing(rawSpacing)
-        val major      = spacing * 5
+        val spacing = niceSpacing(20.0 / zoom)
+        val major   = spacing * 5
 
         val x0 = (floor(worldLeft   / spacing) * spacing).toInt()
         val x1 = (ceil (worldRight  / spacing) * spacing).toInt()
@@ -85,21 +92,16 @@ class BoardPanel(
         val pixelStroke = BasicStroke((1f / zoom).toFloat())
         g2.stroke = pixelStroke
 
-        // Minor grid
         g2.color = Color(60, 60, 60)
-        var xi = x0
-        while (xi <= x1) { g2.drawLine(xi, y0, xi, y1); xi += spacing }
-        var yi = y0
-        while (yi <= y1) { g2.drawLine(x0, yi, x1, yi); yi += spacing }
+        var xi = x0; while (xi <= x1) { g2.drawLine(xi, y0, xi, y1); xi += spacing }
+        var yi = y0; while (yi <= y1) { g2.drawLine(x0, yi, x1, yi); yi += spacing }
 
-        // Major grid
         g2.color = Color(75, 75, 75)
         xi = (floor(worldLeft / major) * major).toInt()
         while (xi <= x1) { g2.drawLine(xi, y0, xi, y1); xi += major }
         yi = (floor(worldTop / major) * major).toInt()
         while (yi <= y1) { g2.drawLine(x0, yi, x1, yi); yi += major }
 
-        // Origin axes
         g2.color = Color(105, 105, 105)
         g2.drawLine(x0, 0, x1, 0)
         g2.drawLine(0, y0, 0, y1)

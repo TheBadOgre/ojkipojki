@@ -4,5 +4,6 @@ import java.io.Serializable
 
 data class SpriteBag(
     val id: SpriteBagId,
+    val groupName: String,
     val sprites: List<Sprite>
 ) : Serializable

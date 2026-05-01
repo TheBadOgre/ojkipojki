@@ -30,7 +30,7 @@ object SpriteLoader {
             val maskImage   = ImageIO.read(maskFile)
 
             val sprites = extractSprites(spriteBagId, frontImage, backImage, maskImage)
-            SpriteBag(id = spriteBagId, sprites = sprites)
+            SpriteBag(id = spriteBagId, groupName = directory.name, sprites = sprites)
         }
     }
 

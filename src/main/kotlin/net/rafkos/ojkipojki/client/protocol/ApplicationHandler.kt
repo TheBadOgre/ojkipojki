@@ -21,9 +21,10 @@ class ApplicationHandler(
         val mainWindow = MainWindow(serverHost, ClientContext.stateRepository, selectionState, viewportState, debouncer, transmitter)
 
         ClientContext.onTokensUpdated = {
+            val tokens = ClientContext.stateRepository.findAllTokens()
             SwingUtilities.invokeLater {
-                selectionState.pruneAgainst(ClientContext.stateRepository.findAllTokens())
-                mainWindow.boardPanel.repaint()
+                mainWindow.tokenAnimator.syncWithTokens(tokens)
+                selectionState.pruneAgainst(tokens)
             }
         }
         ClientContext.onSpriteBagsUpdated = {
