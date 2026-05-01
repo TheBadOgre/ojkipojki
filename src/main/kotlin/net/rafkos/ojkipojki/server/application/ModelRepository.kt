@@ -17,6 +17,7 @@ class ModelRepository {
     fun findSpriteBagById(id: SpriteBagId): SpriteBagModel? = spriteBags[id]
     fun findAllSpriteBags(): List<SpriteBagModel> = spriteBags.values.toList()
     fun saveSpriteBag(model: SpriteBagModel) { spriteBags[model.id] = model }
+    fun deleteAllSpriteBags() { spriteBags.clear() }
 
     fun findSpriteById(id: SpriteId): SpriteModel? = sprites[id]
     fun findAllSprites(): List<SpriteModel> = sprites.values.toList()

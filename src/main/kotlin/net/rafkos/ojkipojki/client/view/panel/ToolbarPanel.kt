@@ -15,47 +15,73 @@ class ToolbarPanel(
 ) : JToolBar() {
 
     private val lockBtn = JButton()
+    private val conditionalButtons = mutableListOf<Pair<JButton, () -> Boolean>>()
 
     init {
         isFloatable = false
-        iconBtn(Icons.selectAll,   "Select All")            { actions.selectAll() }
-        iconBtn(Icons.deselectAll, "Deselect All")          { actions.deselectAll() }
-        iconBtn(Icons.rotate60,    "Rotate +60°")           { actions.rotate60() }
-        iconBtn(Icons.bringToBack,  "Send to back")              { actions.bringToBack() }
-        iconBtn(Icons.indexDown,   "Index −  (send back)")      { actions.indexDown() }
-        iconBtn(Icons.indexUp,     "Index +  (bring forward)")  { actions.indexUp() }
-        iconBtn(Icons.bringToFront,"Bring to front")            { actions.bringToFront() }
-        iconBtn(Icons.delete,      "Delete selected")       { actions.delete() }
-        iconBtn(Icons.refreshBags, "Reload sprite bags from disk") { actions.refreshBags() }
+
+        always(Icons.selectAll,   "Select All  (Ctrl+A)")              { actions.selectAll() }
+        cond({ actions.hasSelection() },
+             Icons.deselectAll, "Deselect All  (Esc)")                 { actions.deselectAll() }
+        cond({ actions.hasUnlockedSelected() },
+             Icons.rotate60,    "Rotate +60°  (R)")                    { actions.rotate60() }
+        cond({ actions.hasUnlockedSelected() },
+             Icons.bringToBack,  "Send to Back  (Ctrl+Shift+[)")       { actions.bringToBack() }
+        cond({ actions.hasUnlockedSelected() },
+             Icons.indexDown,   "Index −  Send Back  (Ctrl+[)")        { actions.indexDown() }
+        cond({ actions.hasUnlockedSelected() },
+             Icons.indexUp,     "Index +  Bring Forward  (Ctrl+])")    { actions.indexUp() }
+        cond({ actions.hasUnlockedSelected() },
+             Icons.bringToFront,"Bring to Front  (Ctrl+Shift+])")      { actions.bringToFront() }
+        cond({ actions.hasUnlockedSelected() },
+             Icons.delete,      "Delete Selected  (Del)")              { actions.delete() }
+        always(Icons.refreshBags,"Reload Sprite Bags from Disk  (F5)") { actions.refreshBags() }
         addSeparator()
-        iconBtn(Icons.flip,    "Flip selected tokens")                 { actions.flip() }
-        iconBtn(Icons.stack,   "Stack selected tokens")                { actions.stack() }
-        iconBtn(Icons.shuffle, "Shuffle selected tokens")              { actions.shuffle() }
-        iconBtn(Icons.spreadH, "Spread selected tokens horizontally")  { actions.spreadHorizontal() }
-        iconBtn(Icons.spreadV, "Spread selected tokens vertically")    { actions.spreadVertical() }
-        iconBtn(Icons.grid,    "Arrange selected tokens in a grid")    { actions.arrangeGrid() }
+        cond({ actions.hasUnlockedSelected() },
+             Icons.flip,    "Flip Selected Tokens  (F)")               { actions.flip() }
+        cond({ actions.hasUnlockedSelected() },
+             Icons.stack,   "Stack Selected Tokens")                   { actions.stack() }
+        cond({ actions.hasAtLeast2UnlockedSelected() },
+             Icons.shuffle, "Shuffle Selected Tokens")                 { actions.shuffle() }
+        cond({ actions.hasAtLeast2UnlockedSelected() },
+             Icons.spreadH, "Spread Tokens Horizontally")              { actions.spreadHorizontal() }
+        cond({ actions.hasAtLeast2UnlockedSelected() },
+             Icons.spreadV, "Spread Tokens Vertically")                { actions.spreadVertical() }
+        cond({ actions.hasUnlockedSelected() },
+             Icons.grid,    "Arrange Tokens in Grid  (G)")             { actions.arrangeGrid() }
         addSeparator()
 
-        refreshLockButton()
         lockBtn.addActionListener { actions.toggleLock() }
         add(lockBtn)
 
-        selectionState.addListener { refreshLockButton() }
+        selectionState.addListener { refreshButtons() }
+        refreshButtons()
     }
 
-    fun refresh() = refreshLockButton()
+    fun refresh() = refreshButtons()
 
-    private fun refreshLockButton() {
+    private fun refreshButtons() {
+        conditionalButtons.forEach { (btn, condition) -> btn.isEnabled = condition() }
+        lockBtn.isEnabled = actions.hasSelection()
         val allLocked = actions.isAllSelectedLocked()
-        lockBtn.icon       = if (allLocked) Icons.unlock else Icons.lock
-        lockBtn.toolTipText = if (allLocked) "Unlock selected tokens" else "Lock selected tokens"
+        lockBtn.icon        = if (allLocked) Icons.unlock else Icons.lock
+        lockBtn.toolTipText = if (allLocked) "Unlock Selected Tokens  (L)" else "Lock Selected Tokens  (L)"
     }
 
-    private fun iconBtn(icon: ImageIcon, tooltip: String, action: () -> Unit): JButton {
+    private fun always(icon: ImageIcon, tooltip: String, action: () -> Unit): JButton {
         val b = JButton(icon)
         b.toolTipText = tooltip
         b.addActionListener { action() }
         add(b)
+        return b
+    }
+
+    private fun cond(condition: () -> Boolean, icon: ImageIcon, tooltip: String, action: () -> Unit): JButton {
+        val b = JButton(icon)
+        b.toolTipText = tooltip
+        b.addActionListener { action() }
+        add(b)
+        conditionalButtons.add(b to condition)
         return b
     }
 }

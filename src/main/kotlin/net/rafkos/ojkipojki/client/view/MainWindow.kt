@@ -17,6 +17,7 @@ import net.rafkos.ojkipojki.client.view.state.TokenAnimator
 import net.rafkos.ojkipojki.client.view.state.ViewportState
 import java.awt.BorderLayout
 import java.awt.event.ActionEvent
+import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
 import javax.swing.AbstractAction
 import javax.swing.JComponent
@@ -105,5 +106,27 @@ class MainWindow(
         am.put("delete", object : AbstractAction() {
             override fun actionPerformed(e: ActionEvent) { actions.delete() }
         })
+
+        fun bind(stroke: KeyStroke, name: String, action: () -> Unit) {
+            im.put(stroke, name)
+            am.put(name, object : AbstractAction() {
+                override fun actionPerformed(e: ActionEvent) = action()
+            })
+        }
+
+        val ctrl  = InputEvent.CTRL_DOWN_MASK
+        val shift = InputEvent.SHIFT_DOWN_MASK
+
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_A,             ctrl),         "selectAll")   { actions.selectAll() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE,        0),            "deselectAll") { actions.deselectAll() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_R,             0),            "rotate60")    { actions.rotate60() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_OPEN_BRACKET,  ctrl),         "indexDown")   { actions.indexDown() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_CLOSE_BRACKET, ctrl),         "indexUp")     { actions.indexUp() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_OPEN_BRACKET,  ctrl or shift),"bringToBack") { actions.bringToBack() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_CLOSE_BRACKET, ctrl or shift),"bringToFront"){ actions.bringToFront() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_F5,            0),            "refreshBags") { actions.refreshBags() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_F,             0),            "flip")        { actions.flip() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_G,             0),            "arrangeGrid") { actions.arrangeGrid() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_L,             0),            "toggleLock")  { actions.toggleLock() }
     }
 }

@@ -194,4 +194,12 @@ class BoardActions(
         val lockValue = !isAllSelectedLocked()
         transmitter.transmit(LockTokensCommand(ids, lockValue))
     }
+
+    fun hasSelection(): Boolean = selectionState.selectedIds().isNotEmpty()
+
+    fun hasUnlockedSelected(): Boolean =
+        selectionState.selectedIds().any { id -> stateRepository.findTokenById(id)?.locked != true }
+
+    fun hasAtLeast2UnlockedSelected(): Boolean =
+        selectionState.selectedIds().count { id -> stateRepository.findTokenById(id)?.locked != true } >= 2
 }
