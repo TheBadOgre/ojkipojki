@@ -42,7 +42,6 @@ class BoardActions(
     fun indexDown() {
         val adjustments = selectionState.selectedIds().mapNotNull { id ->
             val token = stateRepository.findTokenById(id) ?: return@mapNotNull null
-            if (token.index.value <= 0) return@mapNotNull null
             MoveTokensCommand.TokenIdAndPosition(id, null, null, null, Index(token.index.value - 1))
         }
         if (adjustments.isNotEmpty()) transmitter.transmit(MoveTokensCommand(adjustments))

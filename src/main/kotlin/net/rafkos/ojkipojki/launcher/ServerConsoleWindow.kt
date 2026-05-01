@@ -14,6 +14,8 @@ class ServerConsoleWindow : JFrame("Ojkipojki server") {
         font = Font(Font.MONOSPACED, Font.PLAIN, 12)
         caretColor = Color(204, 204, 204)
         margin = java.awt.Insets(4, 6, 4, 6)
+        lineWrap = true
+        wrapStyleWord = false
     }
 
     init {
@@ -21,6 +23,7 @@ class ServerConsoleWindow : JFrame("Ojkipojki server") {
         setSize(700, 450)
         add(JScrollPane(textArea).apply {
             border = BorderFactory.createEmptyBorder()
+            horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
         })
         setLocationRelativeTo(null)
         redirectOutput()

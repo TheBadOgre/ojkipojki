@@ -14,14 +14,17 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class TokenRenderer {
-    private val imageCache  = mutableMapOf<SpriteId, Pair<BufferedImage, BufferedImage>>()
-    private val shadowCache = mutableMapOf<SpriteId, BufferedImage>()
-    private val edgeCache   = mutableMapOf<SpriteId, BufferedImage>()
+    companion object {
+        private const val SHADOW_SPREAD = 5
+        private const val EDGE_SPREAD   = 2
+    }
+
+    private val imageCache     = mutableMapOf<SpriteId, Pair<BufferedImage, BufferedImage>>()
+    private val compositeCache = mutableMapOf<Pair<SpriteId, Boolean>, BufferedImage>()
 
     fun clearCache() {
         imageCache.clear()
-        shadowCache.clear()
-        edgeCache.clear()
+        compositeCache.clear()
     }
 
     private fun toFastImage(src: BufferedImage): BufferedImage {
@@ -39,63 +42,77 @@ class TokenRenderer {
             Pair(front, back)
         }
 
-    private fun getShadow(sprite: Sprite, src: BufferedImage): BufferedImage =
-        shadowCache.getOrPut(sprite.id) {
-            val w = src.width
-            val h = src.height
-            val srcPx = src.getRGB(0, 0, w, h, null, 0, w)
-            val dst = IntArray(w * h)
-            for (i in srcPx.indices) {
-                val a = (srcPx[i] ushr 24) and 0xFF
-                if (a > 10) dst[i] = (a * 0.45).toInt() shl 24
-            }
-            val out = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE)
-            out.setRGB(0, 0, w, h, dst, 0, w)
-            out
-        }
+    private fun buildComposite(sprite: Sprite, flipped: Boolean): BufferedImage {
+        val (front, back) = getImages(sprite)
+        val image = if (flipped) back else front
+        val w = front.width
+        val h = front.height
+        val frontPx = front.getRGB(0, 0, w, h, null, 0, w)
 
-    private fun getDarkEdge(sprite: Sprite, src: BufferedImage): BufferedImage =
-        edgeCache.getOrPut(sprite.id) {
-            val w = src.width
-            val h = src.height
-            val srcPx = src.getRGB(0, 0, w, h, null, 0, w)
-            val dst = IntArray(w * h)
-            for (i in srcPx.indices) {
-                val argb = srcPx[i]
-                val a = (argb ushr 24) and 0xFF
-                if (a > 0) {
-                    val r = (((argb ushr 16) and 0xFF) * 0.35).toInt()
-                    val g = (((argb ushr 8)  and 0xFF) * 0.35).toInt()
-                    val b = (( argb          and 0xFF) * 0.35).toInt()
-                    dst[i] = (a shl 24) or (r shl 16) or (g shl 8) or b
-                }
-            }
-            val out = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE)
-            out.setRGB(0, 0, w, h, dst, 0, w)
-            out
+        // Shadow: alpha-only black, 36% of source alpha (original 45% × 0.8)
+        val shadowPx = IntArray(w * h)
+        for (i in frontPx.indices) {
+            val a = (frontPx[i] ushr 24) and 0xFF
+            if (a > 10) shadowPx[i] = (a * 0.18).toInt() shl 24
         }
+        val shadowImg = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE)
+        shadowImg.setRGB(0, 0, w, h, shadowPx, 0, w)
+
+        // Dark edge: 35% brightness, 80% of source alpha (20% more transparent)
+        val edgePx = IntArray(w * h)
+        for (i in frontPx.indices) {
+            val argb = frontPx[i]
+            val a = (argb ushr 24) and 0xFF
+            if (a > 0) {
+                val r = (((argb ushr 16) and 0xFF) * 0.35).toInt()
+                val g = (((argb ushr 8)  and 0xFF) * 0.35).toInt()
+                val b = (( argb          and 0xFF) * 0.35).toInt()
+                edgePx[i] = ((a * 0.8).toInt() shl 24) or (r shl 16) or (g shl 8) or b
+            }
+        }
+        val edgeImg = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE)
+        edgeImg.setRGB(0, 0, w, h, edgePx, 0, w)
+
+        val ss = SHADOW_SPREAD
+        val es = EDGE_SPREAD
+        val composite = BufferedImage(w + 2 * ss, h + 2 * ss, BufferedImage.TYPE_INT_ARGB_PRE)
+        val cg = composite.createGraphics()
+        try {
+            // Shadow: 8 positions at ±ss around center — equal halo all sides
+            for (dx in intArrayOf(-ss, 0, ss)) for (dy in intArrayOf(-ss, 0, ss)) {
+                if (dx == 0 && dy == 0) continue
+                cg.drawImage(shadowImg, ss + dx, ss + dy, null)
+            }
+            // Dark edge: 8 positions at ±es — equal stroke all sides
+            for (dx in intArrayOf(-es, 0, es)) for (dy in intArrayOf(-es, 0, es)) {
+                if (dx == 0 && dy == 0) continue
+                cg.drawImage(edgeImg, ss + dx, ss + dy, null)
+            }
+            // Main image centered
+            cg.drawImage(image, ss, ss, null)
+        } finally { cg.dispose() }
+        return composite
+    }
 
     fun draw(g2: Graphics2D, token: Token, sprite: Sprite, selected: Boolean, zoom: Double,
              scaleX: Double = 1.0, scaleY: Double = 1.0) {
         if (scaleX < 0.01 || scaleY < 0.01) return
-        val (front, back) = getImages(sprite)
-        val image    = if (token.flipped) back else front
-        val shadow   = getShadow(sprite, image)
-        val darkEdge = getDarkEdge(sprite, image)
-        val w = image.width
-        val h = image.height
+        val (front, _) = getImages(sprite)
+        val w = front.width
+        val h = front.height
+        val composite = compositeCache.getOrPut(sprite.id to token.flipped) { buildComposite(sprite, token.flipped) }
+        val ss = SHADOW_SPREAD
 
         val saved = g2.transform
         val at = AffineTransform()
         at.translate(token.position.x.toDouble(), token.position.y.toDouble())
         at.rotate(Math.toRadians(token.rotation.degrees))
-        at.scale(scaleX, scaleY)   // scale about token centre
-        at.translate(-w / 2.0, -h / 2.0)
+        at.scale(scaleX, scaleY)
+        // Shift so the image portion (at ss,ss in composite) is centered on token position
+        at.translate(-w / 2.0 - ss, -h / 2.0 - ss)
         g2.transform(at)
 
-        g2.drawImage(shadow,   5, 5, null)
-        g2.drawImage(darkEdge, 2, 2, null)
-        g2.drawImage(image,    0, 0, null)
+        g2.drawImage(composite, 0, 0, null)
 
         if (selected) {
             val prevColor  = g2.color
@@ -104,7 +121,7 @@ class TokenRenderer {
             g2.color  = Color(80, 160, 255)
             g2.stroke = BasicStroke(pw, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
                 floatArrayOf(pw * 6, pw * 4), 0f)
-            g2.drawRect(0, 0, w, h)
+            g2.drawRect(ss, ss, w, h)
             g2.color  = prevColor
             g2.stroke = prevStroke
         }
