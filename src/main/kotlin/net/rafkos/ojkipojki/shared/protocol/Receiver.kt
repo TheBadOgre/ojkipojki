@@ -17,7 +17,7 @@ abstract class Receiver<A : Any>(
             while (running) {
                 val item = receive()
                 if (item != null) {
-                    log.info("Received: ${item.javaClass.simpleName}")
+                    log.debug("Received: ${item.javaClass.simpleName}")
                     dispatcher.dispatch(item)
                 } else {
                     running = false

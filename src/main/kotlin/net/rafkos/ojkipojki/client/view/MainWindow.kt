@@ -24,6 +24,7 @@ import java.awt.event.KeyEvent
 import javax.swing.AbstractAction
 import javax.swing.JComponent
 import javax.swing.JFrame
+import javax.swing.JSplitPane
 import javax.swing.KeyStroke
 import javax.swing.WindowConstants
 
@@ -72,10 +73,13 @@ class MainWindow(
 
         statusBarPanel = StatusBarPanel(serverIp)
 
+        val splitPane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, boardPanel, spriteBagListPanel)
+        splitPane.resizeWeight = 1.0
+        splitPane.dividerLocation = 1200 - 220
+
         layout = BorderLayout()
         add(toolbarPanel, BorderLayout.NORTH)
-        add(spriteBagListPanel, BorderLayout.EAST)
-        add(boardPanel, BorderLayout.CENTER)
+        add(splitPane, BorderLayout.CENTER)
         add(statusBarPanel, BorderLayout.SOUTH)
 
         setLocationRelativeTo(null)

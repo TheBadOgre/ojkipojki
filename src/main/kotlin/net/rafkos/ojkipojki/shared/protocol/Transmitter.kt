@@ -9,7 +9,7 @@ abstract class Transmitter<A : Any>(socket: Socket) {
 
     @Synchronized
     fun transmit(obj: A) {
-        log.info("Transmitting: ${obj.javaClass.simpleName}")
+        log.debug("Transmitting: ${obj.javaClass.simpleName}")
         outputStream.writeObject(obj)
         outputStream.flush()
     }

@@ -16,7 +16,7 @@ class EventBroadcastService(
     }
 
     fun broadcast(event: Event, clientId: String) {
-        log.info("Sending ${event.javaClass.simpleName} to $clientId")
+        log.debug("Sending ${event.javaClass.simpleName} to $clientId")
         try {
             sessionManager.getTransmitter(clientId)?.transmit(event)
         } catch (e: Exception) {
@@ -29,7 +29,7 @@ class EventBroadcastService(
             .filter { it != excludeClientId }
             .forEach { clientId ->
                 val event = eventFactory(clientId)
-                log.info("Sending ${event.javaClass.simpleName} to $clientId")
+                log.debug("Sending ${event.javaClass.simpleName} to $clientId")
                 try {
                     sessionManager.getTransmitter(clientId)?.transmit(event)
                 } catch (e: Exception) {

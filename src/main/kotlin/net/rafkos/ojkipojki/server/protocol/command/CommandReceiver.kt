@@ -25,7 +25,8 @@ class CommandReceiver(
                 } catch (e: Exception) { null }
 
                 if (cmd != null) {
-                    log.info("Received: ${cmd.javaClass.simpleName}")
+                    log.debug("Received: ${cmd.javaClass.simpleName}")
+
                     ServerContext.commandDispatcher.dispatch(cmd)
                 } else {
                     running = false
