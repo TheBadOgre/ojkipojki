@@ -24,6 +24,20 @@ class EventBroadcastService(
         }
     }
 
+    fun broadcastCustom(excludeClientId: String? = null, eventFactory: (String) -> Event) {
+        sessionManager.getAllClientIds()
+            .filter { it != excludeClientId }
+            .forEach { clientId ->
+                val event = eventFactory(clientId)
+                log.info("Sending ${event.javaClass.simpleName} to $clientId")
+                try {
+                    sessionManager.getTransmitter(clientId)?.transmit(event)
+                } catch (e: Exception) {
+                    log.error("Failed to send ${event.javaClass.simpleName} to $clientId", e)
+                }
+            }
+    }
+
     companion object {
         private val log = LogManager.getLogger(EventBroadcastService::class.java)
     }

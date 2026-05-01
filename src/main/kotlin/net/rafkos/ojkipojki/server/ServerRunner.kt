@@ -1,9 +1,11 @@
 package net.rafkos.ojkipojki.server
 
 import net.rafkos.ojkipojki.server.application.AutoSaveService
+import net.rafkos.ojkipojki.server.application.ClientColorRegistry
 import net.rafkos.ojkipojki.server.application.GameLoader
 import net.rafkos.ojkipojki.server.application.GamePersistence
 import net.rafkos.ojkipojki.server.application.ModelRepository
+import net.rafkos.ojkipojki.server.application.PointerRepository
 import net.rafkos.ojkipojki.server.protocol.ClientSessionManager
 import net.rafkos.ojkipojki.server.protocol.ConnectionManager
 import net.rafkos.ojkipojki.server.protocol.command.CommandDispatcher
@@ -19,6 +21,8 @@ object ServerRunner {
         log.info("Starting server on port $serverPort")
 
         ServerContext.modelRepository = ModelRepository()
+        ServerContext.pointerRepository = PointerRepository()
+        ServerContext.clientColorRegistry = ClientColorRegistry()
         GameLoader.tryLoad(ServerContext.modelRepository)
 
         val connectionManager = ConnectionManager(serverPort)

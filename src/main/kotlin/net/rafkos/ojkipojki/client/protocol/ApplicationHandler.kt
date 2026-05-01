@@ -38,6 +38,17 @@ class ApplicationHandler(
                 window.spriteBagListPanel.refresh()
             }
         }
+        ClientContext.onPointersUpdated = {
+            val pointers = ClientContext.stateRepository.findAllPointers()
+            SwingUtilities.invokeLater {
+                window.pointerAnimator.syncWithPointers(pointers)
+            }
+        }
+        ClientContext.onConnectedClientsUpdated = { count ->
+            SwingUtilities.invokeLater {
+                window.statusBarPanel.updateClientCount(count)
+            }
+        }
 
         SwingUtilities.invokeLater { window.isVisible = true }
 

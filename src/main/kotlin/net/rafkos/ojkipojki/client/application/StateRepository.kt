@@ -1,5 +1,6 @@
 package net.rafkos.ojkipojki.client.application
 
+import net.rafkos.ojkipojki.shared.domain.Pointer
 import net.rafkos.ojkipojki.shared.domain.Sprite
 import net.rafkos.ojkipojki.shared.domain.SpriteBag
 import net.rafkos.ojkipojki.shared.domain.SpriteBagId
@@ -13,6 +14,7 @@ class StateRepository {
     private val spriteBags = ConcurrentHashMap<SpriteBagId, SpriteBag>()
     private val sprites = ConcurrentHashMap<SpriteId, Sprite>()
     private val tokens = ConcurrentHashMap<TokenId, Token>()
+    private val pointers = ConcurrentHashMap<Triple<Int, Int, Int>, Pointer>()
 
     fun findSpriteBagById(id: SpriteBagId): SpriteBag? = spriteBags[id]
     fun findAllSpriteBags(): List<SpriteBag> = spriteBags.values.toList()
@@ -28,5 +30,11 @@ class StateRepository {
     fun replaceAllTokens(incoming: List<Token>) {
         tokens.clear()
         incoming.forEach { tokens[it.id] = it }
+    }
+
+    fun findAllPointers(): List<Pointer> = pointers.values.toList()
+    fun replaceAllPointers(incoming: List<Pointer>) {
+        pointers.clear()
+        incoming.forEach { pointers[Triple(it.red, it.green, it.blue)] = it }
     }
 }

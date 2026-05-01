@@ -5,6 +5,7 @@ import net.rafkos.ojkipojki.shared.protocol.Handler
 import net.rafkos.ojkipojki.shared.protocol.command.Command
 import net.rafkos.ojkipojki.shared.protocol.command.DeleteTokensCommand
 import net.rafkos.ojkipojki.shared.protocol.command.LockTokensCommand
+import net.rafkos.ojkipojki.shared.protocol.command.MovePointerCommand
 import net.rafkos.ojkipojki.shared.protocol.command.MoveTokensCommand
 import net.rafkos.ojkipojki.shared.protocol.command.ShuffleTokensCommand
 import net.rafkos.ojkipojki.shared.protocol.command.SpawnTokensCommand
@@ -18,5 +19,6 @@ class CommandDispatcher : Dispatcher<Command>(
         DeleteTokensCommand::class to DeleteTokensCommandHandler() as Handler<in Command>,
         ShuffleTokensCommand::class to ShuffleTokensCommandHandler() as Handler<in Command>,
         LockTokensCommand::class to LockTokensCommandHandler() as Handler<in Command>,
+        MovePointerCommand::class to MovePointerCommandHandler() as Handler<in Command>,
     )
 )

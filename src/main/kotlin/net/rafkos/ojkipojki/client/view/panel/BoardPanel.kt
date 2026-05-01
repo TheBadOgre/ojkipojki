@@ -3,9 +3,11 @@ package net.rafkos.ojkipojki.client.view.panel
 import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.view.input.DragRectOverlay
 import net.rafkos.ojkipojki.client.view.render.TokenRenderer
+import net.rafkos.ojkipojki.client.view.state.PointerAnimator
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.client.view.state.TokenAnimator
 import net.rafkos.ojkipojki.client.view.state.ViewportState
+import net.rafkos.ojkipojki.shared.domain.Pointer
 import net.rafkos.ojkipojki.shared.domain.Token
 import java.awt.BasicStroke
 import java.awt.Color
@@ -27,10 +29,12 @@ class BoardPanel(
     val viewportState: ViewportState,
     val tokenRenderer: TokenRenderer,
     val tokenAnimator: TokenAnimator,
+    val pointerAnimator: PointerAnimator,
 ) : JPanel() {
 
     var dragRectOverlay: DragRectOverlay? = null
     private var lastTokens: List<Token> = emptyList()
+    private var lastPointers: List<Pointer> = emptyList()
 
     init {
         background = Color(135, 135, 135)
@@ -40,6 +44,8 @@ class BoardPanel(
         Timer(16) {
             lastTokens = stateRepository.findAllTokens()
             tokenAnimator.tick(lastTokens)
+            lastPointers = stateRepository.findAllPointers()
+            pointerAnimator.tick(lastPointers)
             repaint()
         }.start()
     }
@@ -75,6 +81,13 @@ class BoardPanel(
 
             val (sx, sy) = tokenAnimator.flipScale(token.id)
             tokenRenderer.draw(g2, visual, sprite, selectionState.contains(token.id), token.locked, zoom, sx, sy)
+        }
+
+        for (pointer in lastPointers) {
+            val (px, py) = pointerAnimator.visualize(pointer)
+            g2.color = Color(pointer.red, pointer.green, pointer.blue, 150)
+            val r = 16
+            g2.fillOval((px - r).toInt(), (py - r).toInt(), r * 2, r * 2)
         }
 
         g2.transform = savedTransform

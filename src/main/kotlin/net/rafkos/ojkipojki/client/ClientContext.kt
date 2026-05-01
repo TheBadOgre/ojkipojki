@@ -8,4 +8,6 @@ object ClientContext {
     lateinit var stateRepository: StateRepository
     var onTokensUpdated: (() -> Unit)? = null
     var onSpriteBagsUpdated: (() -> Unit)? = null
+    var onPointersUpdated: (() -> Unit)? = null
+    var onConnectedClientsUpdated: ((Int) -> Unit)? = null
 }

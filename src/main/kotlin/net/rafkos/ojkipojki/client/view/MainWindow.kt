@@ -4,6 +4,7 @@ import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.command.CommandTransmitter
 import net.rafkos.ojkipojki.client.view.action.BoardActions
 import net.rafkos.ojkipojki.client.view.action.CommandDebouncer
+import net.rafkos.ojkipojki.client.view.action.PointerCommandSender
 import net.rafkos.ojkipojki.client.view.action.SpriteBagSpawnHandler
 import net.rafkos.ojkipojki.client.view.input.BoardMouseController
 import net.rafkos.ojkipojki.client.view.input.BoardWheelController
@@ -12,6 +13,7 @@ import net.rafkos.ojkipojki.client.view.panel.SpriteBagListPanel
 import net.rafkos.ojkipojki.client.view.panel.StatusBarPanel
 import net.rafkos.ojkipojki.client.view.panel.ToolbarPanel
 import net.rafkos.ojkipojki.client.view.render.TokenRenderer
+import net.rafkos.ojkipojki.client.view.state.PointerAnimator
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.client.view.state.TokenAnimator
 import net.rafkos.ojkipojki.client.view.state.ViewportState
@@ -37,14 +39,19 @@ class MainWindow(
     val boardPanel: BoardPanel
     val spriteBagListPanel: SpriteBagListPanel
     val toolbarPanel: ToolbarPanel
+    val statusBarPanel: StatusBarPanel
     val tokenAnimator: TokenAnimator = TokenAnimator()
+    val pointerAnimator: PointerAnimator = PointerAnimator()
 
     init {
         defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
         setSize(1200, 800)
 
         val tokenRenderer = TokenRenderer()
-        boardPanel = BoardPanel(stateRepository, selectionState, viewportState, tokenRenderer, tokenAnimator)
+        boardPanel = BoardPanel(stateRepository, selectionState, viewportState, tokenRenderer, tokenAnimator, pointerAnimator)
+
+        val pointerSender = PointerCommandSender(transmitter, viewportState, boardPanel)
+        boardPanel.addMouseMotionListener(pointerSender)
 
         val spawnHandler = SpriteBagSpawnHandler(transmitter, viewportState, boardPanel)
         val actions = BoardActions(stateRepository, selectionState, transmitter, debouncer)
@@ -63,11 +70,13 @@ class MainWindow(
 
         toolbarPanel = ToolbarPanel(actions, selectionState, stateRepository)
 
+        statusBarPanel = StatusBarPanel(serverIp)
+
         layout = BorderLayout()
         add(toolbarPanel, BorderLayout.NORTH)
         add(spriteBagListPanel, BorderLayout.EAST)
         add(boardPanel, BorderLayout.CENTER)
-        add(StatusBarPanel(serverIp), BorderLayout.SOUTH)
+        add(statusBarPanel, BorderLayout.SOUTH)
 
         setLocationRelativeTo(null)
     }
