@@ -72,14 +72,14 @@ class MainWindow(
 
         data class PanBinding(val key: Int, val dx: Int, val dy: Int)
         val panBindings = listOf(
-            PanBinding(KeyEvent.VK_RIGHT, 1,  0),
-            PanBinding(KeyEvent.VK_LEFT, -1,  0),
-            PanBinding(KeyEvent.VK_DOWN,  0,  1),
-            PanBinding(KeyEvent.VK_UP,    0, -1),
-            PanBinding(KeyEvent.VK_D,     1,  0),
-            PanBinding(KeyEvent.VK_A,    -1,  0),
-            PanBinding(KeyEvent.VK_S,     0,  1),
-            PanBinding(KeyEvent.VK_W,     0, -1),
+            PanBinding(KeyEvent.VK_RIGHT, -1,  0),
+            PanBinding(KeyEvent.VK_LEFT,   1,  0),
+            PanBinding(KeyEvent.VK_DOWN,   0, -1),
+            PanBinding(KeyEvent.VK_UP,     0,  1),
+            PanBinding(KeyEvent.VK_D,     -1,  0),
+            PanBinding(KeyEvent.VK_A,      1,  0),
+            PanBinding(KeyEvent.VK_S,      0, -1),
+            PanBinding(KeyEvent.VK_W,      0,  1),
         )
 
         for ((key, dx, dy) in panBindings) {
