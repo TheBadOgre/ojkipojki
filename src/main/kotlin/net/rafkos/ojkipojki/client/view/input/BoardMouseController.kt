@@ -105,10 +105,22 @@ class BoardMouseController(
                 mode = Mode.DRAG_TOKENS
             }
             token != null && selectionState.contains(token.id) -> {
-                clickedTokenId = token.id
-                captureInitialPositions()
-                tokenAnimator.setImmediate(selectionState.selectedIds())
-                mode = Mode.DRAG_TOKENS
+                val allLocked = selectionState.selectedIds().all { id -> stateRepository.findTokenById(id)?.locked == true }
+                if (allLocked) {
+                    if (ctrlHeld) {
+                        boardPanel.dragRectOverlay = DragRectOverlay(e.x, e.y)
+                        mode = Mode.RECT_SELECT_ADDITIVE
+                    } else {
+                        selectionState.clear()
+                        boardPanel.dragRectOverlay = DragRectOverlay(e.x, e.y)
+                        mode = Mode.RECT_SELECT
+                    }
+                } else {
+                    clickedTokenId = token.id
+                    captureInitialPositions()
+                    tokenAnimator.setImmediate(selectionState.selectedIds())
+                    mode = Mode.DRAG_TOKENS
+                }
             }
             token == null && !ctrlHeld -> {
                 selectionState.clear()
@@ -175,10 +187,12 @@ class BoardMouseController(
             Mode.DRAG_TOKENS -> {
                 debouncer.flush()
                 tokenAnimator.clearImmediate()
-                // Toggle deselect only when: no meaningful drag, ctrl held, and the token
-                // was already selected at press time (not just added by this ctrl+click).
                 if (!moved && ctrlHeld && !ctrlAddedToken) {
+                    // Toggle deselect: ctrl+click on already-selected token.
                     clickedTokenId?.let { selectionState.toggle(it) }
+                } else if (!moved && !ctrlHeld) {
+                    // Plain click on any token: collapse selection to just this token.
+                    clickedTokenId?.let { selectionState.replaceWith(listOf(it)) }
                 }
             }
             Mode.RECT_SELECT, Mode.RECT_SELECT_ADDITIVE -> {
