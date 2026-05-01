@@ -41,6 +41,8 @@ class BoardMouseController(
     // True when ctrl+press just added a previously-unselected token; prevents
     // the release handler from immediately toggling it back off.
     private var ctrlAddedToken = false
+    // Set when press lands on a locked unselected token; used to click-select it on release.
+    private var pressedOnLockedToken: TokenId? = null
 
     override fun mousePressed(e: MouseEvent) {
         boardPanel.requestFocusInWindow()
@@ -69,11 +71,24 @@ class BoardMouseController(
         ctrlHeld = e.isControlDown
         moved = false
         ctrlAddedToken = false
+        pressedOnLockedToken = null
 
         val worldPos = viewportState.screenToWorld(e.point, boardPanel.width, boardPanel.height)
         val token = findTokenAt(worldPos.x.toDouble(), worldPos.y.toDouble())
 
         when {
+            // Locked unselected token: start rect-select (drag from locked token), click-select on release.
+            token != null && token.locked && !selectionState.contains(token.id) && !ctrlHeld -> {
+                pressedOnLockedToken = token.id
+                selectionState.clear()
+                boardPanel.dragRectOverlay = DragRectOverlay(e.x, e.y)
+                mode = Mode.RECT_SELECT
+            }
+            token != null && token.locked && !selectionState.contains(token.id) && ctrlHeld -> {
+                pressedOnLockedToken = token.id
+                boardPanel.dragRectOverlay = DragRectOverlay(e.x, e.y)
+                mode = Mode.RECT_SELECT_ADDITIVE
+            }
             token != null && !selectionState.contains(token.id) && !ctrlHeld -> {
                 selectionState.replaceWith(listOf(token.id))
                 clickedTokenId = token.id
@@ -169,6 +184,8 @@ class BoardMouseController(
             Mode.RECT_SELECT, Mode.RECT_SELECT_ADDITIVE -> {
                 val rect = boardPanel.dragRectOverlay?.toRectangle()
                 boardPanel.dragRectOverlay = null
+                val lockedId = pressedOnLockedToken
+                pressedOnLockedToken = null
                 if (rect != null && (rect.width > 2 || rect.height > 2)) {
                     val inRect = stateRepository.findAllTokens().filter { token ->
                         val sp = viewportState.worldToScreen(token.position, boardPanel.width, boardPanel.height)
@@ -176,6 +193,9 @@ class BoardMouseController(
                     }.map { it.id }
                     if (mode == Mode.RECT_SELECT_ADDITIVE) selectionState.addAll(inRect)
                     else selectionState.replaceWith(inRect)
+                } else if (lockedId != null) {
+                    if (mode == Mode.RECT_SELECT_ADDITIVE) selectionState.addAll(listOf(lockedId))
+                    else selectionState.replaceWith(listOf(lockedId))
                 }
             }
             Mode.RMB_ROTATE -> {

@@ -21,8 +21,10 @@ class ToolbarPanel(
         iconBtn(Icons.selectAll,   "Select All")            { actions.selectAll() }
         iconBtn(Icons.deselectAll, "Deselect All")          { actions.deselectAll() }
         iconBtn(Icons.rotate60,    "Rotate +60°")           { actions.rotate60() }
-        iconBtn(Icons.indexDown,   "Index −  (send back)")  { actions.indexDown() }
-        iconBtn(Icons.indexUp,     "Index +  (bring forward)") { actions.indexUp() }
+        iconBtn(Icons.bringToBack,  "Send to back")              { actions.bringToBack() }
+        iconBtn(Icons.indexDown,   "Index −  (send back)")      { actions.indexDown() }
+        iconBtn(Icons.indexUp,     "Index +  (bring forward)")  { actions.indexUp() }
+        iconBtn(Icons.bringToFront,"Bring to front")            { actions.bringToFront() }
         iconBtn(Icons.delete,      "Delete selected")       { actions.delete() }
         iconBtn(Icons.refreshBags, "Reload sprite bags from disk") { actions.refreshBags() }
         addSeparator()

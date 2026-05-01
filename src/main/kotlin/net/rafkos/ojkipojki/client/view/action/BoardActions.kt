@@ -51,6 +51,32 @@ class BoardActions(
         if (adjustments.isNotEmpty()) transmitter.transmit(MoveTokensCommand(adjustments))
     }
 
+    fun bringToFront() {
+        val selected = selectionState.selectedIds()
+            .mapNotNull { stateRepository.findTokenById(it) }
+            .filter { !it.locked }
+            .sortedBy { it.index.value }
+        if (selected.isEmpty()) return
+        val maxIndex = stateRepository.findAllTokens().maxOfOrNull { it.index.value } ?: 0
+        val adjustments = selected.mapIndexed { i, token ->
+            MoveTokensCommand.TokenIdAndPosition(token.id, null, null, null, Index(maxIndex + 1 + i))
+        }
+        transmitter.transmit(MoveTokensCommand(adjustments))
+    }
+
+    fun bringToBack() {
+        val selected = selectionState.selectedIds()
+            .mapNotNull { stateRepository.findTokenById(it) }
+            .filter { !it.locked }
+            .sortedBy { it.index.value }
+        if (selected.isEmpty()) return
+        val minIndex = stateRepository.findAllTokens().minOfOrNull { it.index.value } ?: 0
+        val adjustments = selected.mapIndexed { i, token ->
+            MoveTokensCommand.TokenIdAndPosition(token.id, null, null, null, Index(minIndex - selected.size + i))
+        }
+        transmitter.transmit(MoveTokensCommand(adjustments))
+    }
+
     fun delete() {
         val ids = selectionState.selectedIds()
             .filter { id -> stateRepository.findTokenById(id)?.locked != true }
