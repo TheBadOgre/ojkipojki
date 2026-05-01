@@ -25,4 +25,6 @@ class ModelRepository {
     fun findTokenById(id: TokenId): TokenModel? = tokens[id]
     fun findAllTokens(): List<TokenModel> = tokens.values.toList()
     fun saveToken(model: TokenModel) { tokens[model.id] = model }
+    fun deleteToken(id: TokenId) { tokens.remove(id) }
+    fun deleteAllTokens() { tokens.clear() }
 }

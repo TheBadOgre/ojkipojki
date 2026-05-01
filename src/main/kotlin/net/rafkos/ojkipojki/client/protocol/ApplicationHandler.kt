@@ -1,20 +1,42 @@
 package net.rafkos.ojkipojki.client.protocol
 
+import net.rafkos.ojkipojki.client.ClientContext
 import net.rafkos.ojkipojki.client.command.CommandTransmitter
-import net.rafkos.ojkipojki.client.application.SpriteLoader
-import net.rafkos.ojkipojki.shared.protocol.command.SpawnTokensCommand
+import net.rafkos.ojkipojki.client.view.MainWindow
+import net.rafkos.ojkipojki.client.view.action.CommandDebouncer
+import net.rafkos.ojkipojki.client.view.loader.SpriteBagDirectoryLoader
+import net.rafkos.ojkipojki.client.view.state.SelectionState
+import net.rafkos.ojkipojki.client.view.state.ViewportState
 import net.rafkos.ojkipojki.shared.protocol.command.UploadSpriteBagsCommand
-import java.io.File
+import javax.swing.SwingUtilities
 
-class ApplicationHandler {
+class ApplicationHandler(
+    private val serverHost: String,
+    private val selectionState: SelectionState,
+    private val viewportState: ViewportState,
+) {
     fun onSessionReady(transmitter: CommandTransmitter) {
-        val spriteBags = SpriteLoader.loadSprites(File("E:\\workspace\\ojkipojki\\armies\\test_army"))
+        val debouncer = CommandDebouncer(transmitter)
 
-        transmitter.transmit(UploadSpriteBagsCommand(spriteBags))
-        spriteBags.forEach { transmitter.transmit(SpawnTokensCommand(it.id)) }
+        val mainWindow = MainWindow(serverHost, ClientContext.stateRepository, selectionState, viewportState, debouncer, transmitter)
+
+        ClientContext.onTokensUpdated = {
+            SwingUtilities.invokeLater {
+                selectionState.pruneAgainst(ClientContext.stateRepository.findAllTokens())
+                mainWindow.boardPanel.repaint()
+            }
+        }
+        ClientContext.onSpriteBagsUpdated = {
+            SwingUtilities.invokeLater {
+                mainWindow.spriteBagListPanel.refresh()
+            }
+        }
+
+        SwingUtilities.invokeLater { mainWindow.isVisible = true }
+
+        val bags = SpriteBagDirectoryLoader.loadAll()
+        if (bags.isNotEmpty()) transmitter.transmit(UploadSpriteBagsCommand(bags))
     }
 
-    fun onSessionClosed() {
-
-    }
+    fun onSessionClosed() {}
 }

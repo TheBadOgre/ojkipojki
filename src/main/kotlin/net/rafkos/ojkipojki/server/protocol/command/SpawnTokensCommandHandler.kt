@@ -17,7 +17,9 @@ class SpawnTokensCommandHandler : Handler<SpawnTokensCommand> {
             val model = TokenModel()
             model.id = TokenId(UUID.randomUUID())
             model.spriteId = sprite.id
-            model.position.apply(Position(x = Random.nextInt(-100, 101), y = i * 20))
+            val baseX = action.position?.x ?: Random.nextInt(-100, 101)
+            val baseY = action.position?.y ?: 0
+            model.position.apply(Position(x = baseX, y = i * 20 + baseY))
             ServerContext.modelRepository.saveToken(model)
         }
         val tokens = ServerContext.modelRepository.findAllTokens().map { it.toState() }

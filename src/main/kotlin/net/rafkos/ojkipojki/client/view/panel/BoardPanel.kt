@@ -1,0 +1,117 @@
+package net.rafkos.ojkipojki.client.view.panel
+
+import net.rafkos.ojkipojki.client.application.StateRepository
+import net.rafkos.ojkipojki.client.view.input.DragRectOverlay
+import net.rafkos.ojkipojki.client.view.render.TokenRenderer
+import net.rafkos.ojkipojki.client.view.state.SelectionState
+import net.rafkos.ojkipojki.client.view.state.ViewportState
+import java.awt.BasicStroke
+import java.awt.Color
+import java.awt.Dimension
+import java.awt.Graphics
+import java.awt.Graphics2D
+import java.awt.RenderingHints
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.log10
+import kotlin.math.pow
+import javax.swing.JPanel
+
+class BoardPanel(
+    val stateRepository: StateRepository,
+    val selectionState: SelectionState,
+    val viewportState: ViewportState,
+    val tokenRenderer: TokenRenderer,
+) : JPanel() {
+
+    var dragRectOverlay: DragRectOverlay? = null
+
+    init {
+        background = Color(48, 48, 48)
+        preferredSize = Dimension(800, 600)
+        isFocusable = true
+    }
+
+    override fun paintComponent(g: Graphics) {
+        super.paintComponent(g)
+        val g2 = g as Graphics2D
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+
+        val savedTransform = g2.transform
+        g2.transform(viewportState.affineTransform(width, height))
+
+        paintGrid(g2)
+
+        val tokens = stateRepository.findAllTokens().sortedBy { it.index.value }
+        for (token in tokens) {
+            val sprite = stateRepository.findSpriteById(token.spriteId) ?: continue
+            tokenRenderer.draw(g2, token, sprite, selectionState.contains(token.id), viewportState.zoom)
+        }
+
+        g2.transform = savedTransform
+
+        dragRectOverlay?.let { overlay ->
+            val rect = overlay.toRectangle()
+            g2.color = Color(0, 100, 255, 50)
+            g2.fillRect(rect.x, rect.y, rect.width, rect.height)
+            g2.color = Color(0, 100, 255, 180)
+            g2.drawRect(rect.x, rect.y, rect.width, rect.height)
+        }
+    }
+
+    private fun paintGrid(g2: Graphics2D) {
+        val zoom = viewportState.zoom
+        val ox   = viewportState.offsetX
+        val oy   = viewportState.offsetY
+        val w    = this.width.toDouble()
+        val h    = this.height.toDouble()
+
+        val worldLeft   = (-w / 2.0) / zoom - ox
+        val worldRight  = ( w / 2.0) / zoom - ox
+        val worldTop    = (-h / 2.0) / zoom - oy
+        val worldBottom = ( h / 2.0) / zoom - oy
+
+        val minPx      = 20.0
+        val rawSpacing = minPx / zoom
+        val spacing    = niceSpacing(rawSpacing)
+        val major      = spacing * 5
+
+        val x0 = (floor(worldLeft   / spacing) * spacing).toInt()
+        val x1 = (ceil (worldRight  / spacing) * spacing).toInt()
+        val y0 = (floor(worldTop    / spacing) * spacing).toInt()
+        val y1 = (ceil (worldBottom / spacing) * spacing).toInt()
+
+        val pixelStroke = BasicStroke((1f / zoom).toFloat())
+        g2.stroke = pixelStroke
+
+        // Minor grid
+        g2.color = Color(60, 60, 60)
+        var xi = x0
+        while (xi <= x1) { g2.drawLine(xi, y0, xi, y1); xi += spacing }
+        var yi = y0
+        while (yi <= y1) { g2.drawLine(x0, yi, x1, yi); yi += spacing }
+
+        // Major grid
+        g2.color = Color(75, 75, 75)
+        xi = (floor(worldLeft / major) * major).toInt()
+        while (xi <= x1) { g2.drawLine(xi, y0, xi, y1); xi += major }
+        yi = (floor(worldTop / major) * major).toInt()
+        while (yi <= y1) { g2.drawLine(x0, yi, x1, yi); yi += major }
+
+        // Origin axes
+        g2.color = Color(105, 105, 105)
+        g2.drawLine(x0, 0, x1, 0)
+        g2.drawLine(0, y0, 0, y1)
+    }
+
+    private fun niceSpacing(raw: Double): Int {
+        val mag = 10.0.pow(floor(log10(raw.coerceAtLeast(1.0)))).toInt()
+        val r = raw / mag
+        return when {
+            r < 2.0 -> mag
+            r < 5.0 -> mag * 2
+            else    -> mag * 5
+        }
+    }
+}

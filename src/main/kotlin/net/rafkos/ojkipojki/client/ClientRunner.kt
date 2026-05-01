@@ -5,6 +5,8 @@ import net.rafkos.ojkipojki.client.protocol.ApplicationHandler
 import net.rafkos.ojkipojki.client.protocol.ClientSession
 import net.rafkos.ojkipojki.client.protocol.ServerConnection
 import net.rafkos.ojkipojki.client.protocol.event.EventDispatcher
+import net.rafkos.ojkipojki.client.view.state.SelectionState
+import net.rafkos.ojkipojki.client.view.state.ViewportState
 import org.apache.logging.log4j.LogManager
 
 object ClientRunner {
@@ -16,7 +18,10 @@ object ClientRunner {
         ClientContext.eventDispatcher = EventDispatcher()
         ClientContext.stateRepository = StateRepository()
 
-        val clientSession = ClientSession(ApplicationHandler())
+        val selectionState = SelectionState()
+        val viewportState  = ViewportState()
+
+        val clientSession   = ClientSession(ApplicationHandler(serverHost, selectionState, viewportState))
         val serverConnection = ServerConnection(serverHost, serverPort, clientSession)
 
         serverConnection.connect()
