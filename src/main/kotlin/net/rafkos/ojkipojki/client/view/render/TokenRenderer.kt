@@ -24,36 +24,54 @@ class TokenRenderer {
         edgeCache.clear()
     }
 
+    private fun toFastImage(src: BufferedImage): BufferedImage {
+        if (src.type == BufferedImage.TYPE_INT_ARGB_PRE) return src
+        val out = BufferedImage(src.width, src.height, BufferedImage.TYPE_INT_ARGB_PRE)
+        val g = out.createGraphics()
+        try { g.drawImage(src, 0, 0, null) } finally { g.dispose() }
+        return out
+    }
+
     fun getImages(sprite: Sprite): Pair<BufferedImage, BufferedImage> =
         imageCache.getOrPut(sprite.id) {
-            val front = ImageIO.read(ByteArrayInputStream(sprite.frontImageBytes))
-            val back  = ImageIO.read(ByteArrayInputStream(sprite.backImageBytes))
+            val front = toFastImage(ImageIO.read(ByteArrayInputStream(sprite.frontImageBytes)))
+            val back  = toFastImage(ImageIO.read(ByteArrayInputStream(sprite.backImageBytes)))
             Pair(front, back)
         }
 
     private fun getShadow(sprite: Sprite, src: BufferedImage): BufferedImage =
         shadowCache.getOrPut(sprite.id) {
-            val out = BufferedImage(src.width, src.height, BufferedImage.TYPE_INT_ARGB)
-            for (y in 0 until src.height) for (x in 0 until src.width) {
-                val a = (src.getRGB(x, y) ushr 24) and 0xFF
-                if (a > 10) out.setRGB(x, y, ((a * 0.45).toInt() shl 24))
+            val w = src.width
+            val h = src.height
+            val srcPx = src.getRGB(0, 0, w, h, null, 0, w)
+            val dst = IntArray(w * h)
+            for (i in srcPx.indices) {
+                val a = (srcPx[i] ushr 24) and 0xFF
+                if (a > 10) dst[i] = (a * 0.45).toInt() shl 24
             }
+            val out = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE)
+            out.setRGB(0, 0, w, h, dst, 0, w)
             out
         }
 
     private fun getDarkEdge(sprite: Sprite, src: BufferedImage): BufferedImage =
         edgeCache.getOrPut(sprite.id) {
-            val out = BufferedImage(src.width, src.height, BufferedImage.TYPE_INT_ARGB)
-            for (y in 0 until src.height) for (x in 0 until src.width) {
-                val argb = src.getRGB(x, y)
+            val w = src.width
+            val h = src.height
+            val srcPx = src.getRGB(0, 0, w, h, null, 0, w)
+            val dst = IntArray(w * h)
+            for (i in srcPx.indices) {
+                val argb = srcPx[i]
                 val a = (argb ushr 24) and 0xFF
                 if (a > 0) {
                     val r = (((argb ushr 16) and 0xFF) * 0.35).toInt()
                     val g = (((argb ushr 8)  and 0xFF) * 0.35).toInt()
                     val b = (( argb          and 0xFF) * 0.35).toInt()
-                    out.setRGB(x, y, (a shl 24) or (r shl 16) or (g shl 8) or b)
+                    dst[i] = (a shl 24) or (r shl 16) or (g shl 8) or b
                 }
             }
+            val out = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE)
+            out.setRGB(0, 0, w, h, dst, 0, w)
             out
         }
 

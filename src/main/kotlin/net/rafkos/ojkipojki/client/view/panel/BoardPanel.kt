@@ -6,6 +6,7 @@ import net.rafkos.ojkipojki.client.view.render.TokenRenderer
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.client.view.state.TokenAnimator
 import net.rafkos.ojkipojki.client.view.state.ViewportState
+import net.rafkos.ojkipojki.shared.domain.Token
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Dimension
@@ -18,6 +19,7 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
+import kotlin.math.sqrt
 
 class BoardPanel(
     val stateRepository: StateRepository,
@@ -28,6 +30,7 @@ class BoardPanel(
 ) : JPanel() {
 
     var dragRectOverlay: DragRectOverlay? = null
+    private var lastTokens: List<Token> = emptyList()
 
     init {
         background = Color(48, 48, 48)
@@ -35,7 +38,8 @@ class BoardPanel(
         isFocusable = true
 
         Timer(16) {
-            tokenAnimator.tick(stateRepository.findAllTokens())
+            lastTokens = stateRepository.findAllTokens()
+            tokenAnimator.tick(lastTokens)
             repaint()
         }.start()
     }
@@ -51,12 +55,26 @@ class BoardPanel(
 
         paintGrid(g2)
 
-        val tokens = stateRepository.findAllTokens().sortedBy { it.index.value }
+        val zoom = viewportState.zoom
+        val ox = viewportState.offsetX
+        val oy = viewportState.offsetY
+        val pw = width.toDouble()
+        val ph = height.toDouble()
+
+        val tokens = lastTokens.sortedBy { it.index.value }
         for (token in tokens) {
             val sprite = stateRepository.findSpriteById(token.spriteId) ?: continue
             val visual = tokenAnimator.visualize(token)
+
+            val (frontImg, _) = tokenRenderer.getImages(sprite)
+            val screenCx = (visual.position.x + ox) * zoom + pw / 2
+            val screenCy = (visual.position.y + oy) * zoom + ph / 2
+            val screenR = sqrt(frontImg.width.toDouble().pow(2) + frontImg.height.toDouble().pow(2)) / 2 * zoom
+            if (screenCx + screenR < 0 || screenCx - screenR > pw ||
+                screenCy + screenR < 0 || screenCy - screenR > ph) continue
+
             val (sx, sy) = tokenAnimator.flipScale(token.id)
-            tokenRenderer.draw(g2, visual, sprite, selectionState.contains(token.id), viewportState.zoom, sx, sy)
+            tokenRenderer.draw(g2, visual, sprite, selectionState.contains(token.id), zoom, sx, sy)
         }
 
         g2.transform = savedTransform
