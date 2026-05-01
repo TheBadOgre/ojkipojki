@@ -94,7 +94,7 @@ class TokenRenderer {
         return composite
     }
 
-    fun draw(g2: Graphics2D, token: Token, sprite: Sprite, selected: Boolean, zoom: Double,
+    fun draw(g2: Graphics2D, token: Token, sprite: Sprite, selected: Boolean, locked: Boolean, zoom: Double,
              scaleX: Double = 1.0, scaleY: Double = 1.0) {
         if (scaleX < 0.01 || scaleY < 0.01) return
         val (front, _) = getImages(sprite)
@@ -114,17 +114,27 @@ class TokenRenderer {
 
         g2.drawImage(composite, 0, 0, null)
 
+        val prevColor  = g2.color
+        val prevStroke = g2.stroke
+        val pw = (1.0 / zoom).toFloat()
+
         if (selected) {
-            val prevColor  = g2.color
-            val prevStroke = g2.stroke
-            val pw = (1.0 / zoom).toFloat()
             g2.color  = Color(80, 160, 255)
             g2.stroke = BasicStroke(pw, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
                 floatArrayOf(pw * 6, pw * 4), 0f)
             g2.drawRect(ss, ss, w, h)
-            g2.color  = prevColor
-            g2.stroke = prevStroke
         }
+
+        if (locked) {
+            val inset = (pw * 4).toInt().coerceAtLeast(3)
+            g2.color  = Color(180, 180, 180, 200)
+            g2.stroke = BasicStroke(pw, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
+                floatArrayOf(pw * 5, pw * 3), pw * 3)
+            g2.drawRect(ss + inset, ss + inset, w - inset * 2, h - inset * 2)
+        }
+
+        g2.color  = prevColor
+        g2.stroke = prevStroke
 
         g2.transform = saved
     }

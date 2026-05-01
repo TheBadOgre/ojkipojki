@@ -8,5 +8,6 @@ data class Token(
     val position: Position = Position(0, 0),
     val rotation: Rotation = Rotation(0.0),
     val index: Index = Index(0),
-    val flipped: Boolean = false
+    val flipped: Boolean = false,
+    val locked: Boolean = false,
 ) : Serializable

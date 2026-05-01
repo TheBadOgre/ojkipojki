@@ -4,7 +4,18 @@
       "Bash(xargs cat *)",
       "Bash(./gradlew compileKotlin)",
       "Bash(./gradlew clean *)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(./gradlew compileKotlin --rerun-tasks)",
+      "Bash(./gradlew --stop)",
+      "Bash(./gradlew build *)",
+      "Bash(./gradlew compileKotlin --stacktrace)",
+      "Bash(./gradlew --stacktrace --no-daemon compileKotlin)",
+      "Bash(./gradlew --info --no-daemon compileKotlin)",
+      "Bash(rm -f ~/.gradle/caches/journal-1/journal-1.lock)",
+      "Bash(./gradlew compileKotlin --no-daemon)",
+      "Bash(./gradlew compileKotlin -q)",
+      "Bash(./gradlew compileKotlin --rerun-tasks -q)"
     ]
   }
 }

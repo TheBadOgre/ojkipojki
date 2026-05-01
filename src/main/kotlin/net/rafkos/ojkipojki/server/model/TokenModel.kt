@@ -18,6 +18,7 @@ class TokenModel {
     var rotation: RotationModel = RotationModel()
     var index: IndexModel = IndexModel()
     var flipped: Boolean = false
+    var locked: Boolean = false
 
     fun apply(state: Token) {
         this.id = state.id
@@ -26,6 +27,7 @@ class TokenModel {
         rotation.apply(state.rotation)
         index.apply(state.index)
         this.flipped = state.flipped
+        this.locked = state.locked
     }
 
     fun toState(): Token = Token(
@@ -34,6 +36,7 @@ class TokenModel {
         position = position.toState(),
         rotation = rotation.toState(),
         index = index.toState(),
-        flipped = flipped
+        flipped = flipped,
+        locked = locked,
     )
 }

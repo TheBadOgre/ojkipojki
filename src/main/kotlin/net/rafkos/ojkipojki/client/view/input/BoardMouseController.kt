@@ -121,9 +121,11 @@ class BoardMouseController(
                 val screenDy = (e.y - pressScreenY).toDouble()
                 val (worldDx, worldDy) = viewportState.screenDeltaToWorld(screenDx, screenDy)
                 selectionState.selectedIds().forEach { id ->
+                    val token = stateRepository.findTokenById(id) ?: return@forEach
+                    if (token.locked) return@forEach
                     val initial = initialPositions[id] ?: return@forEach
                     val newPos = Position(initial.x + worldDx, initial.y + worldDy)
-                    stateRepository.findTokenById(id)?.let { stateRepository.saveToken(it.copy(position = newPos)) }
+                    stateRepository.saveToken(token.copy(position = newPos))
                     debouncer.enqueue(MoveTokensCommand.TokenIdAndPosition(id, newPos, null, null, null))
                 }
             }
@@ -136,6 +138,7 @@ class BoardMouseController(
                 val delta = dx.toDouble()
                 selectionState.selectedIds().forEach { id ->
                     val token = stateRepository.findTokenById(id) ?: return@forEach
+                    if (token.locked) return@forEach
                     val newRot = Rotation((token.rotation.degrees + delta + 360.0) % 360.0)
                     stateRepository.saveToken(token.copy(rotation = newRot))
                     debouncer.enqueue(MoveTokensCommand.TokenIdAndPosition(id, null, newRot, null, null))

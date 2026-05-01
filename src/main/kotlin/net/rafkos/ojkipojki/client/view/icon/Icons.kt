@@ -67,4 +67,6 @@ object Icons {
     val spreadH     = load("spread_horizontal")
     val spreadV     = load("spread_vertical")
     val grid        = load("grid")
+    val lock        = load("lock")
+    val unlock      = load("unlock")
 }

@@ -7,7 +7,9 @@ import net.rafkos.ojkipojki.shared.protocol.event.TokensUpdatedEvent
 
 class ShuffleTokensCommandHandler : Handler<ShuffleTokensCommand> {
     override fun handle(action: ShuffleTokensCommand) {
-        val models = action.tokenIds.mapNotNull { ServerContext.modelRepository.findTokenById(it) }
+        val models = action.tokenIds
+            .mapNotNull { ServerContext.modelRepository.findTokenById(it) }
+            .filter { !it.locked }
         if (models.size < 2) return
 
         // Collect (position, index) slots from the selected tokens, shuffle them,

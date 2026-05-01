@@ -1,12 +1,21 @@
 package net.rafkos.ojkipojki.client.view.panel
 
+import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.view.action.BoardActions
 import net.rafkos.ojkipojki.client.view.icon.Icons
+import net.rafkos.ojkipojki.client.view.state.SelectionState
 import javax.swing.ImageIcon
 import javax.swing.JButton
 import javax.swing.JToolBar
 
-class ToolbarPanel(private val actions: BoardActions) : JToolBar() {
+class ToolbarPanel(
+    private val actions: BoardActions,
+    private val selectionState: SelectionState,
+    private val stateRepository: StateRepository,
+) : JToolBar() {
+
+    private val lockBtn = JButton()
+
     init {
         isFloatable = false
         iconBtn(Icons.selectAll,   "Select All")            { actions.selectAll() }
@@ -23,6 +32,21 @@ class ToolbarPanel(private val actions: BoardActions) : JToolBar() {
         iconBtn(Icons.spreadH, "Spread selected tokens horizontally")  { actions.spreadHorizontal() }
         iconBtn(Icons.spreadV, "Spread selected tokens vertically")    { actions.spreadVertical() }
         iconBtn(Icons.grid,    "Arrange selected tokens in a grid")    { actions.arrangeGrid() }
+        addSeparator()
+
+        refreshLockButton()
+        lockBtn.addActionListener { actions.toggleLock() }
+        add(lockBtn)
+
+        selectionState.addListener { refreshLockButton() }
+    }
+
+    fun refresh() = refreshLockButton()
+
+    private fun refreshLockButton() {
+        val allLocked = actions.isAllSelectedLocked()
+        lockBtn.icon       = if (allLocked) Icons.unlock else Icons.lock
+        lockBtn.toolTipText = if (allLocked) "Unlock selected tokens" else "Lock selected tokens"
     }
 
     private fun iconBtn(icon: ImageIcon, tooltip: String, action: () -> Unit): JButton {

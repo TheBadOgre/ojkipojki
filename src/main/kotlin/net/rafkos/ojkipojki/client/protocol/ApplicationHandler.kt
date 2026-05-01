@@ -29,7 +29,7 @@ class ApplicationHandler(
             SwingUtilities.invokeLater {
                 window.tokenAnimator.syncWithTokens(tokens)
                 selectionState.pruneAgainst(tokens)
-//                window.spriteBagListPanel.refresh()
+                window.toolbarPanel.refresh()
             }
         }
         ClientContext.onSpriteBagsUpdated = {

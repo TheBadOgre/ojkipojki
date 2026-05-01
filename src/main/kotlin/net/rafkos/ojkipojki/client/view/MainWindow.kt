@@ -35,6 +35,7 @@ class MainWindow(
 
     val boardPanel: BoardPanel
     val spriteBagListPanel: SpriteBagListPanel
+    val toolbarPanel: ToolbarPanel
     val tokenAnimator: TokenAnimator = TokenAnimator()
 
     init {
@@ -59,8 +60,10 @@ class MainWindow(
 
         setupKeyBindings(boardPanel, actions, viewportState)
 
+        toolbarPanel = ToolbarPanel(actions, selectionState, stateRepository)
+
         layout = BorderLayout()
-        add(ToolbarPanel(actions), BorderLayout.NORTH)
+        add(toolbarPanel, BorderLayout.NORTH)
         add(spriteBagListPanel, BorderLayout.EAST)
         add(boardPanel, BorderLayout.CENTER)
         add(StatusBarPanel(serverIp), BorderLayout.SOUTH)

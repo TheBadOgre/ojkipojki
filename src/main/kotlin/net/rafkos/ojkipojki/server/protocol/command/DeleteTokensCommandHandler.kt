@@ -7,7 +7,9 @@ import net.rafkos.ojkipojki.shared.protocol.event.TokensUpdatedEvent
 
 class DeleteTokensCommandHandler : Handler<DeleteTokensCommand> {
     override fun handle(action: DeleteTokensCommand) {
-        action.tokenIds.forEach { ServerContext.modelRepository.deleteToken(it) }
+        action.tokenIds
+            .filter { ServerContext.modelRepository.findTokenById(it)?.locked != true }
+            .forEach { ServerContext.modelRepository.deleteToken(it) }
         val tokens = ServerContext.modelRepository.findAllTokens().map { it.toState() }
         ServerContext.eventBroadcastService.broadcast(TokensUpdatedEvent(tokens))
     }

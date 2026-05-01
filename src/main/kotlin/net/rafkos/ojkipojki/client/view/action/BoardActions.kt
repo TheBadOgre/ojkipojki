@@ -8,6 +8,7 @@ import net.rafkos.ojkipojki.shared.domain.Index
 import net.rafkos.ojkipojki.shared.domain.Position
 import net.rafkos.ojkipojki.shared.domain.Rotation
 import net.rafkos.ojkipojki.shared.protocol.command.DeleteTokensCommand
+import net.rafkos.ojkipojki.shared.protocol.command.LockTokensCommand
 import net.rafkos.ojkipojki.shared.protocol.command.MoveTokensCommand
 import net.rafkos.ojkipojki.shared.protocol.command.ShuffleTokensCommand
 import net.rafkos.ojkipojki.shared.protocol.command.UploadSpriteBagsCommand
@@ -26,6 +27,7 @@ class BoardActions(
     fun rotate60() {
         val adjustments = selectionState.selectedIds().mapNotNull { id ->
             val token = stateRepository.findTokenById(id) ?: return@mapNotNull null
+            if (token.locked) return@mapNotNull null
             MoveTokensCommand.TokenIdAndPosition(id, null, Rotation((token.rotation.degrees + 60.0) % 360.0), null, null)
         }
         if (adjustments.isNotEmpty()) transmitter.transmit(MoveTokensCommand(adjustments))
@@ -34,6 +36,7 @@ class BoardActions(
     fun indexUp() {
         val adjustments = selectionState.selectedIds().mapNotNull { id ->
             val token = stateRepository.findTokenById(id) ?: return@mapNotNull null
+            if (token.locked) return@mapNotNull null
             MoveTokensCommand.TokenIdAndPosition(id, null, null, null, Index(token.index.value + 1))
         }
         if (adjustments.isNotEmpty()) transmitter.transmit(MoveTokensCommand(adjustments))
@@ -42,13 +45,16 @@ class BoardActions(
     fun indexDown() {
         val adjustments = selectionState.selectedIds().mapNotNull { id ->
             val token = stateRepository.findTokenById(id) ?: return@mapNotNull null
+            if (token.locked) return@mapNotNull null
             MoveTokensCommand.TokenIdAndPosition(id, null, null, null, Index(token.index.value - 1))
         }
         if (adjustments.isNotEmpty()) transmitter.transmit(MoveTokensCommand(adjustments))
     }
 
     fun delete() {
-        val ids = selectionState.selectedIds().toList()
+        val ids = selectionState.selectedIds()
+            .filter { id -> stateRepository.findTokenById(id)?.locked != true }
+            .toList()
         if (ids.isEmpty()) return
         transmitter.transmit(DeleteTokensCommand(ids))
         selectionState.clear()
@@ -62,6 +68,7 @@ class BoardActions(
     fun flip() {
         val adjustments = selectionState.selectedIds().mapNotNull { id ->
             val token = stateRepository.findTokenById(id) ?: return@mapNotNull null
+            if (token.locked) return@mapNotNull null
             MoveTokensCommand.TokenIdAndPosition(id, null, null, !token.flipped, null)
         }
         if (adjustments.isNotEmpty()) transmitter.transmit(MoveTokensCommand(adjustments))
@@ -70,6 +77,7 @@ class BoardActions(
     fun stack() {
         val tokens = selectionState.selectedIds()
             .mapNotNull { stateRepository.findTokenById(it) }
+            .filter { !it.locked }
             .sortedBy { it.index.value }
         if (tokens.isEmpty()) return
 
@@ -83,7 +91,9 @@ class BoardActions(
     }
 
     fun shuffle() {
-        val ids = selectionState.selectedIds().toList()
+        val ids = selectionState.selectedIds()
+            .filter { id -> stateRepository.findTokenById(id)?.locked != true }
+            .toList()
         if (ids.size < 2) return
         transmitter.transmit(ShuffleTokensCommand(ids))
     }
@@ -91,6 +101,7 @@ class BoardActions(
     fun spreadHorizontal() {
         val tokens = selectionState.selectedIds()
             .mapNotNull { stateRepository.findTokenById(it) }
+            .filter { !it.locked }
             .sortedBy { it.position.x }
         if (tokens.size < 2) return
 
@@ -107,6 +118,7 @@ class BoardActions(
     fun spreadVertical() {
         val tokens = selectionState.selectedIds()
             .mapNotNull { stateRepository.findTokenById(it) }
+            .filter { !it.locked }
             .sortedBy { it.position.y }
         if (tokens.size < 2) return
 
@@ -123,6 +135,7 @@ class BoardActions(
     fun arrangeGrid() {
         val tokens = selectionState.selectedIds()
             .mapNotNull { stateRepository.findTokenById(it) }
+            .filter { !it.locked }
             .sortedBy { it.index.value }
         if (tokens.isEmpty()) return
 
@@ -141,5 +154,18 @@ class BoardActions(
             MoveTokensCommand.TokenIdAndPosition(token.id, Position(startX + col * gap, startY + row * gap), null, null, Index(i))
         }
         transmitter.transmit(MoveTokensCommand(adjustments))
+    }
+
+    fun isAllSelectedLocked(): Boolean {
+        val ids = selectionState.selectedIds()
+        if (ids.isEmpty()) return false
+        return ids.all { id -> stateRepository.findTokenById(id)?.locked == true }
+    }
+
+    fun toggleLock() {
+        val ids = selectionState.selectedIds().toList()
+        if (ids.isEmpty()) return
+        val lockValue = !isAllSelectedLocked()
+        transmitter.transmit(LockTokensCommand(ids, lockValue))
     }
 }

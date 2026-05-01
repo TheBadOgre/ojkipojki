@@ -51,6 +51,13 @@ class ServerConsoleWindow : JFrame("Ojkipojki server") {
             val text = String(b, off, len)
             SwingUtilities.invokeLater {
                 textArea.append(text)
+                val lineCount = textArea.lineCount
+                if (lineCount > 500) {
+                    try {
+                        val endOffset = textArea.getLineEndOffset(lineCount - 501)
+                        textArea.document.remove(0, endOffset)
+                    } catch (_: Exception) {}
+                }
                 textArea.caretPosition = textArea.document.length
             }
         }

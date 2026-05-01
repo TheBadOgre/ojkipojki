@@ -13,6 +13,7 @@ class MoveTokensCommandHandler : Handler<MoveTokensCommand> {
 
         action.adjustments.forEach { adjustment ->
             val model = ServerContext.modelRepository.findTokenById(adjustment.tokenId) ?: return@forEach
+            if (model.locked) return@forEach
             if (adjustment.index != null) oldIndices[adjustment.tokenId] = model.index.value
             adjustment.position?.let { model.position.apply(it) }
             adjustment.rotation?.let { model.rotation.apply(it) }
