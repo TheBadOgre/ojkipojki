@@ -18,6 +18,12 @@ class TokenRenderer {
     private val shadowCache = mutableMapOf<SpriteId, BufferedImage>()
     private val edgeCache   = mutableMapOf<SpriteId, BufferedImage>()
 
+    fun clearCache() {
+        imageCache.clear()
+        shadowCache.clear()
+        edgeCache.clear()
+    }
+
     fun getImages(sprite: Sprite): Pair<BufferedImage, BufferedImage> =
         imageCache.getOrPut(sprite.id) {
             val front = ImageIO.read(ByteArrayInputStream(sprite.frontImageBytes))

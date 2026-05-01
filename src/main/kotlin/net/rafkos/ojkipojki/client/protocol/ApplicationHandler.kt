@@ -34,6 +34,7 @@ class ApplicationHandler(
         }
         ClientContext.onSpriteBagsUpdated = {
             SwingUtilities.invokeLater {
+                window.boardPanel.tokenRenderer.clearCache()
                 window.spriteBagListPanel.refresh()
             }
         }
