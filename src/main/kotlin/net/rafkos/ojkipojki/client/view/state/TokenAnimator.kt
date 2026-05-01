@@ -13,7 +13,7 @@ import kotlin.random.Random
 class TokenAnimator {
     companion object {
         private const val FACTOR    = 0.25
-        private const val FLIP_STEP = 1.0 / 18.0   // ~300ms at 60fps
+        private const val FLIP_STEP = 1.0 / 9.0    // ~150ms at 60fps
     }
 
     private data class VisualState(var x: Double, var y: Double, var rotation: Double)

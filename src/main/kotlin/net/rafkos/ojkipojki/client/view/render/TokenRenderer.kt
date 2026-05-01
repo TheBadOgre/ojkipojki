@@ -53,6 +53,7 @@ class TokenRenderer {
 
     fun draw(g2: Graphics2D, token: Token, sprite: Sprite, selected: Boolean, zoom: Double,
              scaleX: Double = 1.0, scaleY: Double = 1.0) {
+        if (scaleX < 0.01 || scaleY < 0.01) return
         val (front, back) = getImages(sprite)
         val image    = if (token.flipped) back else front
         val shadow   = getShadow(sprite, image)

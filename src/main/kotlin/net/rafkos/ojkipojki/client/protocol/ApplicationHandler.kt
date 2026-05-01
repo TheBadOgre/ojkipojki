@@ -8,6 +8,7 @@ import net.rafkos.ojkipojki.client.view.loader.SpriteBagDirectoryLoader
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.client.view.state.ViewportState
 import net.rafkos.ojkipojki.shared.protocol.command.UploadSpriteBagsCommand
+import javax.swing.JOptionPane
 import javax.swing.SwingUtilities
 
 class ApplicationHandler(
@@ -15,29 +16,46 @@ class ApplicationHandler(
     private val selectionState: SelectionState,
     private val viewportState: ViewportState,
 ) {
+    private var mainWindow: MainWindow? = null
+
     fun onSessionReady(transmitter: CommandTransmitter) {
         val debouncer = CommandDebouncer(transmitter)
 
-        val mainWindow = MainWindow(serverHost, ClientContext.stateRepository, selectionState, viewportState, debouncer, transmitter)
+        val window = MainWindow(serverHost, ClientContext.stateRepository, selectionState, viewportState, debouncer, transmitter)
+        mainWindow = window
 
         ClientContext.onTokensUpdated = {
             val tokens = ClientContext.stateRepository.findAllTokens()
             SwingUtilities.invokeLater {
-                mainWindow.tokenAnimator.syncWithTokens(tokens)
+                window.tokenAnimator.syncWithTokens(tokens)
                 selectionState.pruneAgainst(tokens)
             }
         }
         ClientContext.onSpriteBagsUpdated = {
             SwingUtilities.invokeLater {
-                mainWindow.spriteBagListPanel.refresh()
+                window.spriteBagListPanel.refresh()
             }
         }
 
-        SwingUtilities.invokeLater { mainWindow.isVisible = true }
+        SwingUtilities.invokeLater { window.isVisible = true }
 
         val bags = SpriteBagDirectoryLoader.loadAll()
         if (bags.isNotEmpty()) transmitter.transmit(UploadSpriteBagsCommand(bags))
     }
 
-    fun onSessionClosed() {}
+    fun onSessionClosed() {
+        SwingUtilities.invokeLater {
+            val win = mainWindow ?: return@invokeLater
+            mainWindow = null
+            if (!win.isShowing) return@invokeLater
+            JOptionPane.showMessageDialog(
+                win,
+                "Lost connection to server at $serverHost.",
+                "Disconnected",
+                JOptionPane.ERROR_MESSAGE,
+            )
+            win.dispose()
+            System.exit(1)
+        }
+    }
 }

@@ -14,7 +14,7 @@ class ClientSession(
 
     override fun onConnected(socket: Socket) {
         transmitter = CommandTransmitter(socket)
-        receiver = EventReceiver(socket).also { it.start() }
+        receiver = EventReceiver(socket, onDisconnected = { onDisconnected() }).also { it.start() }
         log.info("Session started — receiver and transmitter ready")
         applicationHandler.onSessionReady(transmitter!!)
     }

@@ -52,9 +52,26 @@ class LauncherWindow : JFrame("Ojkipojki") {
         connectButton.addActionListener {
             val host = hostField.text.trim()
             val port = portField.text.trim().toIntOrNull() ?: return@addActionListener
-            defaultCloseOperation = DISPOSE_ON_CLOSE
-            dispose()
-            Thread { ClientRunner.startClient(host, port) }.apply { isDaemon = true; start() }
+            connectButton.isEnabled = false
+            Thread {
+                try {
+                    ClientRunner.startClient(host, port)
+                    SwingUtilities.invokeLater {
+                        defaultCloseOperation = DISPOSE_ON_CLOSE
+                        dispose()
+                    }
+                } catch (e: Exception) {
+                    SwingUtilities.invokeLater {
+                        connectButton.isEnabled = true
+                        JOptionPane.showMessageDialog(
+                            this@LauncherWindow,
+                            "Cannot connect to $host:$port\n${e.message}",
+                            "Connection Failed",
+                            JOptionPane.ERROR_MESSAGE,
+                        )
+                    }
+                }
+            }.apply { isDaemon = true; start() }
         }
 
         return panel

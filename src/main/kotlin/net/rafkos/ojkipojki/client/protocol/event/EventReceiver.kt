@@ -6,5 +6,6 @@ import net.rafkos.ojkipojki.shared.protocol.event.Event
 import java.net.Socket
 
 class EventReceiver(
-    socket: Socket
-) : Receiver<Event>(socket, ClientContext.eventDispatcher)
+    socket: Socket,
+    onDisconnected: (() -> Unit)? = null,
+) : Receiver<Event>(socket, ClientContext.eventDispatcher, onDisconnected)
