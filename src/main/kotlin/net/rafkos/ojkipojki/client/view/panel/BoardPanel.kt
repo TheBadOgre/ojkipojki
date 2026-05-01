@@ -33,7 +33,7 @@ class BoardPanel(
     private var lastTokens: List<Token> = emptyList()
 
     init {
-        background = Color(48, 48, 48)
+        background = Color(135, 135, 135)
         preferredSize = Dimension(800, 600)
         isFocusable = true
 
@@ -111,17 +111,17 @@ class BoardPanel(
         val pixelStroke = BasicStroke((1f / zoom).toFloat())
         g2.stroke = pixelStroke
 
-        g2.color = Color(60, 60, 60)
+        g2.color = Color(145, 145, 145)
         var xi = x0; while (xi <= x1) { g2.drawLine(xi, y0, xi, y1); xi += spacing }
         var yi = y0; while (yi <= y1) { g2.drawLine(x0, yi, x1, yi); yi += spacing }
 
-        g2.color = Color(75, 75, 75)
+        g2.color = Color(160, 160, 160)
         xi = (floor(worldLeft / major) * major).toInt()
         while (xi <= x1) { g2.drawLine(xi, y0, xi, y1); xi += major }
         yi = (floor(worldTop / major) * major).toInt()
         while (yi <= y1) { g2.drawLine(x0, yi, x1, yi); yi += major }
 
-        g2.color = Color(105, 105, 105)
+        g2.color = Color(170, 170, 170)
         g2.drawLine(x0, 0, x1, 0)
         g2.drawLine(0, y0, 0, y1)
     }
