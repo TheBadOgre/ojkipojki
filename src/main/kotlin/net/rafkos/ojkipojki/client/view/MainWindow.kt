@@ -47,7 +47,7 @@ class MainWindow(
         val spawnHandler = SpriteBagSpawnHandler(transmitter, viewportState, boardPanel)
         val actions = BoardActions(stateRepository, selectionState, transmitter, debouncer)
 
-        spriteBagListPanel = SpriteBagListPanel(spawnHandler)
+        spriteBagListPanel = SpriteBagListPanel(spawnHandler, stateRepository)
 
         val mouseController = BoardMouseController(boardPanel, stateRepository, selectionState, viewportState, debouncer, tokenRenderer, tokenAnimator, onRmbClick = actions::flip)
         val wheelController = BoardWheelController(boardPanel, viewportState, selectionState, stateRepository, debouncer)

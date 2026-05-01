@@ -13,7 +13,8 @@ import kotlin.random.Random
 class SpawnTokensCommandHandler : Handler<SpawnTokensCommand> {
     override fun handle(action: SpawnTokensCommand) {
         val bag = ServerContext.modelRepository.findSpriteBagById(action.spriteBagId) ?: return
-        bag.sprites.forEachIndexed { i, sprite ->
+        val sprites = if (action.spriteId != null) bag.sprites.filter { it.id == action.spriteId } else bag.sprites
+        sprites.forEachIndexed { i, sprite ->
             val model = TokenModel()
             model.id = TokenId(UUID.randomUUID())
             model.spriteId = sprite.id
