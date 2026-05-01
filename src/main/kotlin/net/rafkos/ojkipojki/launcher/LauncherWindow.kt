@@ -2,12 +2,13 @@ package net.rafkos.ojkipojki.launcher
 
 import net.rafkos.ojkipojki.client.ClientRunner
 import net.rafkos.ojkipojki.server.ServerRunner
+import net.rafkos.ojkipojki.shared.locale.LocaleService
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
 import javax.swing.*
 
-class LauncherWindow : JFrame("Ojkipojki") {
+class LauncherWindow : JFrame(LocaleService.get("launcher.title")) {
     init {
         defaultCloseOperation = EXIT_ON_CLOSE
 
@@ -28,11 +29,11 @@ class LauncherWindow : JFrame("Ojkipojki") {
             BorderFactory.createEtchedBorder()
         )
 
-        val hostLabel = JLabel("host")
-        val portLabel = JLabel("port")
+        val hostLabel = JLabel(LocaleService.get("launcher.connect.host"))
+        val portLabel = JLabel(LocaleService.get("launcher.connect.port"))
         val hostField = JTextField("127.0.0.1", 12)
         val portField = JTextField("12001", 6)
-        val connectButton = JButton("connect to server")
+        val connectButton = JButton(LocaleService.get("launcher.connect.button"))
 
         val gbc = GridBagConstraints().apply { insets = Insets(4, 6, 4, 6) }
 
@@ -65,8 +66,8 @@ class LauncherWindow : JFrame("Ojkipojki") {
                         connectButton.isEnabled = true
                         JOptionPane.showMessageDialog(
                             this@LauncherWindow,
-                            "Cannot connect to $host:$port\n${e.message}",
-                            "Connection Failed",
+                            LocaleService.get("launcher.connect.error.message", host, port, e.message ?: ""),
+                            LocaleService.get("launcher.connect.error.title"),
                             JOptionPane.ERROR_MESSAGE,
                         )
                     }
@@ -84,9 +85,9 @@ class LauncherWindow : JFrame("Ojkipojki") {
             BorderFactory.createEtchedBorder()
         )
 
-        val portLabel = JLabel("port")
+        val portLabel = JLabel(LocaleService.get("launcher.host.port"))
         val portField = JTextField("12001")
-        val hostButton = JButton("host server")
+        val hostButton = JButton(LocaleService.get("launcher.host.button"))
 
         val gbc = GridBagConstraints().apply { insets = Insets(4, 6, 4, 6) }
 

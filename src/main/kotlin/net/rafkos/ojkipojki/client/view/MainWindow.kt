@@ -17,6 +17,7 @@ import net.rafkos.ojkipojki.client.view.state.PointerAnimator
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.client.view.state.TokenAnimator
 import net.rafkos.ojkipojki.client.view.state.ViewportState
+import net.rafkos.ojkipojki.shared.locale.LocaleService
 import java.awt.BorderLayout
 import java.awt.event.ActionEvent
 import java.awt.event.InputEvent
@@ -35,7 +36,7 @@ class MainWindow(
     viewportState: ViewportState,
     debouncer: CommandDebouncer,
     transmitter: CommandTransmitter,
-) : JFrame("ojkipojki") {
+) : JFrame(LocaleService.get("main.window.title")) {
 
     val boardPanel: BoardPanel
     val spriteBagListPanel: SpriteBagListPanel

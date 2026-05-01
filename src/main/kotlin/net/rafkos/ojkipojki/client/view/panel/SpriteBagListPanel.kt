@@ -3,6 +3,7 @@ package net.rafkos.ojkipojki.client.view.panel
 import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.view.action.SpriteBagSpawnHandler
 import net.rafkos.ojkipojki.shared.domain.Sprite
+import net.rafkos.ojkipojki.shared.locale.LocaleService
 import net.rafkos.ojkipojki.shared.domain.SpriteBag
 import net.rafkos.ojkipojki.shared.domain.SpriteId
 import java.awt.BorderLayout
@@ -59,7 +60,7 @@ class SpriteBagListPanel(
 
         val sliderPanel = JPanel(BorderLayout(4, 0))
         sliderPanel.border = BorderFactory.createEmptyBorder(4, 6, 4, 6)
-        sliderPanel.add(JLabel("Size"), BorderLayout.WEST)
+        sliderPanel.add(JLabel(LocaleService.get("spritebag.size")), BorderLayout.WEST)
         sliderPanel.add(sizeSlider, BorderLayout.CENTER)
         add(sliderPanel, BorderLayout.NORTH)
 

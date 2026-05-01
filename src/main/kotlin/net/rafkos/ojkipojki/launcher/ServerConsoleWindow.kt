@@ -1,12 +1,13 @@
 package net.rafkos.ojkipojki.launcher
 
+import net.rafkos.ojkipojki.shared.locale.LocaleService
 import java.awt.Color
 import java.awt.Font
 import java.io.OutputStream
 import java.io.PrintStream
 import javax.swing.*
 
-class ServerConsoleWindow : JFrame("Ojkipojki server") {
+class ServerConsoleWindow : JFrame(LocaleService.get("server.console.title")) {
     private val textArea = JTextArea().apply {
         isEditable = false
         background = Color(20, 20, 20)
