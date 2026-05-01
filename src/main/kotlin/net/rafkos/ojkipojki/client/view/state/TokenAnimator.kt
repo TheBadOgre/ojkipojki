@@ -4,21 +4,32 @@ import net.rafkos.ojkipojki.shared.domain.Position
 import net.rafkos.ojkipojki.shared.domain.Rotation
 import net.rafkos.ojkipojki.shared.domain.Token
 import net.rafkos.ojkipojki.shared.domain.TokenId
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.random.Random
 
 class TokenAnimator {
-    companion object { private const val FACTOR = 0.25 }
+    companion object {
+        private const val FACTOR    = 0.25
+        private const val FLIP_STEP = 1.0 / 18.0   // ~300ms at 60fps
+    }
 
     private data class VisualState(var x: Double, var y: Double, var rotation: Double)
+    private data class FlipAnim(val horizontal: Boolean, var progress: Double = 0.0, val targetFlipped: Boolean)
 
     private val states       = mutableMapOf<TokenId, VisualState>()
     private val immediateIds = mutableSetOf<TokenId>()
+    private val knownFlipped = mutableMapOf<TokenId, Boolean>()
+    private val flipAnims    = mutableMapOf<TokenId, FlipAnim>()
 
-    /** Called on TokensUpdatedEvent (EDT). Initialises new tokens at target; existing states animate. */
     fun syncWithTokens(tokens: List<Token>) {
         val live = tokens.map { it.id }.toSet()
         states.keys.retainAll(live)
+        knownFlipped.keys.retainAll(live)
+        flipAnims.keys.retainAll(live)
+
         for (token in tokens) {
             if (token.id !in states) {
                 states[token.id] = VisualState(
@@ -27,10 +38,18 @@ class TokenAnimator {
                     token.rotation.degrees,
                 )
             }
+            val prev = knownFlipped[token.id]
+            if (prev != null && prev != token.flipped && token.id !in flipAnims) {
+                flipAnims[token.id] = FlipAnim(
+                    horizontal    = Random.nextBoolean(),
+                    progress      = 0.0,
+                    targetFlipped = token.flipped,
+                )
+            }
+            knownFlipped[token.id] = token.flipped
         }
     }
 
-    /** Advance one animation frame toward current stateRepository values. Call on EDT. */
     fun tick(tokens: List<Token>) {
         for (token in tokens) {
             val s = states[token.id] ?: continue
@@ -49,23 +68,39 @@ class TokenAnimator {
             val dr = shortestDelta(s.rotation, tr)
             s.rotation += dr * FACTOR
 
-            if (abs(s.x - tx) < 0.5)  s.x        = tx
-            if (abs(s.y - ty) < 0.5)  s.y        = ty
-            if (abs(dr)       < 0.5)  s.rotation = tr
+            if (abs(s.x - tx) < 0.5) s.x        = tx
+            if (abs(s.y - ty) < 0.5) s.y        = ty
+            if (abs(dr)       < 0.5) s.rotation = tr
+        }
+
+        val iter = flipAnims.entries.iterator()
+        while (iter.hasNext()) {
+            val e = iter.next()
+            e.value.progress = (e.value.progress + FLIP_STEP).coerceAtMost(1.0)
+            if (e.value.progress >= 1.0) iter.remove()
         }
     }
 
-    /** Returns token with animated position/rotation for rendering. */
     fun visualize(token: Token): Token {
         if (token.id in immediateIds) return token
-        val s = states[token.id] ?: return token
+        val s    = states[token.id] ?: return token
+        val anim = flipAnims[token.id]
+        // Show old face during first half of animation, new face during second half
+        val displayFlipped = if (anim != null && anim.progress < 0.5) !anim.targetFlipped else token.flipped
         return token.copy(
             position = Position(s.x.roundToInt(), s.y.roundToInt()),
             rotation = Rotation(s.rotation),
+            flipped  = displayFlipped,
         )
     }
 
-    /** Bypass animation for dragged tokens so they track the cursor immediately. */
+    /** (scaleX, scaleY) for the flip animation; (1,1) when idle. */
+    fun flipScale(id: TokenId): Pair<Double, Double> {
+        val anim  = flipAnims[id] ?: return 1.0 to 1.0
+        val scale = abs(cos(anim.progress * PI))
+        return if (anim.horizontal) scale to 1.0 else 1.0 to scale
+    }
+
     fun setImmediate(ids: Collection<TokenId>) { immediateIds.clear(); immediateIds.addAll(ids) }
     fun clearImmediate() { immediateIds.clear() }
 

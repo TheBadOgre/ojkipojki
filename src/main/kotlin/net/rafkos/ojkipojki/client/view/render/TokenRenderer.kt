@@ -51,7 +51,8 @@ class TokenRenderer {
             out
         }
 
-    fun draw(g2: Graphics2D, token: Token, sprite: Sprite, selected: Boolean, zoom: Double) {
+    fun draw(g2: Graphics2D, token: Token, sprite: Sprite, selected: Boolean, zoom: Double,
+             scaleX: Double = 1.0, scaleY: Double = 1.0) {
         val (front, back) = getImages(sprite)
         val image    = if (token.flipped) back else front
         val shadow   = getShadow(sprite, image)
@@ -63,6 +64,7 @@ class TokenRenderer {
         val at = AffineTransform()
         at.translate(token.position.x.toDouble(), token.position.y.toDouble())
         at.rotate(Math.toRadians(token.rotation.degrees))
+        at.scale(scaleX, scaleY)   // scale about token centre
         at.translate(-w / 2.0, -h / 2.0)
         g2.transform(at)
 

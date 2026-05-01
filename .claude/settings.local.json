@@ -3,7 +3,8 @@
     "allow": [
       "Bash(xargs cat *)",
       "Bash(./gradlew compileKotlin)",
-      "Bash(./gradlew clean *)"
+      "Bash(./gradlew clean *)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

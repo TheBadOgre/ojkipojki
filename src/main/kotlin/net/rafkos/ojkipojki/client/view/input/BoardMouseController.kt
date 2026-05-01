@@ -14,6 +14,7 @@ import net.rafkos.ojkipojki.shared.domain.TokenId
 import net.rafkos.ojkipojki.shared.protocol.command.MoveTokensCommand
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import kotlin.math.abs
 
 class BoardMouseController(
     private val boardPanel: BoardPanel,
@@ -23,9 +24,12 @@ class BoardMouseController(
     private val debouncer: CommandDebouncer,
     private val tokenRenderer: TokenRenderer,
     private val tokenAnimator: TokenAnimator,
+    private val onRmbClick: () -> Unit = {},
 ) : MouseAdapter() {
 
     private enum class Mode { IDLE, DRAG_TOKENS, RECT_SELECT, RECT_SELECT_ADDITIVE, RMB_ROTATE, MMB_PAN }
+
+    private companion object { const val DRAG_THRESHOLD = 4 }
 
     private var mode = Mode.IDLE
     private var pressScreenX = 0
@@ -34,6 +38,9 @@ class BoardMouseController(
     private var moved = false
     private var clickedTokenId: TokenId? = null
     private var initialPositions = mapOf<TokenId, Position>()
+    // True when ctrl+press just added a previously-unselected token; prevents
+    // the release handler from immediately toggling it back off.
+    private var ctrlAddedToken = false
 
     override fun mousePressed(e: MouseEvent) {
         boardPanel.requestFocusInWindow()
@@ -46,8 +53,10 @@ class BoardMouseController(
                 return
             }
             MouseEvent.BUTTON3 -> {
+                pressScreenX = e.x
+                pressScreenY = e.y
+                moved = false
                 if (selectionState.selectedIds().isNotEmpty()) {
-                    pressScreenX = e.x
                     mode = Mode.RMB_ROTATE
                 }
                 return
@@ -59,6 +68,7 @@ class BoardMouseController(
         pressScreenY = e.y
         ctrlHeld = e.isControlDown
         moved = false
+        ctrlAddedToken = false
 
         val worldPos = viewportState.screenToWorld(e.point, boardPanel.width, boardPanel.height)
         val token = findTokenAt(worldPos.x.toDouble(), worldPos.y.toDouble())
@@ -73,6 +83,7 @@ class BoardMouseController(
             }
             token != null && !selectionState.contains(token.id) && ctrlHeld -> {
                 selectionState.addAll(listOf(token.id))
+                ctrlAddedToken = true
                 clickedTokenId = token.id
                 captureInitialPositions()
                 tokenAnimator.setImmediate(selectionState.selectedIds())
@@ -98,7 +109,12 @@ class BoardMouseController(
     }
 
     override fun mouseDragged(e: MouseEvent) {
-        moved = true
+        // Only count as a drag once movement exceeds threshold; prevents touchpad
+        // micro-jitter from blocking ctrl+click toggle.
+        if (!moved && (abs(e.x - pressScreenX) > DRAG_THRESHOLD || abs(e.y - pressScreenY) > DRAG_THRESHOLD)) {
+            moved = true
+        }
+
         when (mode) {
             Mode.DRAG_TOKENS -> {
                 val screenDx = (e.x - pressScreenX).toDouble()
@@ -141,7 +157,11 @@ class BoardMouseController(
             Mode.DRAG_TOKENS -> {
                 debouncer.flush()
                 tokenAnimator.clearImmediate()
-                if (!moved && ctrlHeld) clickedTokenId?.let { selectionState.toggle(it) }
+                // Toggle deselect only when: no meaningful drag, ctrl held, and the token
+                // was already selected at press time (not just added by this ctrl+click).
+                if (!moved && ctrlHeld && !ctrlAddedToken) {
+                    clickedTokenId?.let { selectionState.toggle(it) }
+                }
             }
             Mode.RECT_SELECT, Mode.RECT_SELECT_ADDITIVE -> {
                 val rect = boardPanel.dragRectOverlay?.toRectangle()
@@ -155,7 +175,10 @@ class BoardMouseController(
                     else selectionState.replaceWith(inRect)
                 }
             }
-            Mode.RMB_ROTATE -> debouncer.flush()
+            Mode.RMB_ROTATE -> {
+                debouncer.flush()
+                if (!moved) onRmbClick()
+            }
             else -> {}
         }
         mode = Mode.IDLE

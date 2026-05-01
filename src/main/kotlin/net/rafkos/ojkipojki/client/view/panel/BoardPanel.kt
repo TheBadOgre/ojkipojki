@@ -55,7 +55,8 @@ class BoardPanel(
         for (token in tokens) {
             val sprite = stateRepository.findSpriteById(token.spriteId) ?: continue
             val visual = tokenAnimator.visualize(token)
-            tokenRenderer.draw(g2, visual, sprite, selectionState.contains(token.id), viewportState.zoom)
+            val (sx, sy) = tokenAnimator.flipScale(token.id)
+            tokenRenderer.draw(g2, visual, sprite, selectionState.contains(token.id), viewportState.zoom, sx, sy)
         }
 
         g2.transform = savedTransform
