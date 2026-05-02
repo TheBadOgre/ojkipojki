@@ -64,7 +64,7 @@ Domain classes and protocol interfaces used by both sides.
 
 **Protocol abstractions:** `Handler<A>`, `Dispatcher<A>`, `Receiver`, `Transmitter` — generic interfaces for the command/event pipeline.
 
-**`LocaleService`** — loads `/locale/locale_en.properties` from classpath, then overlays the system language file if different from `en`. `get(key)` / `get(key, vararg args)` for parameterised strings. Loaded once at startup.
+**`LocaleService`** — loads `/locale/locale_en.properties` from classpath, then overlays the system language file if different from `en`. `get(key)` / `get(key, vararg args)` for parameterised strings. Loaded once at startup. Every text visible in UI (not console) should be available in all available languages.
 
 ## Commands and Events
 

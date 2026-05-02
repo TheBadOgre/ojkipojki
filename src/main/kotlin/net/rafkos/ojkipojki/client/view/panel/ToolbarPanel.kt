@@ -13,7 +13,7 @@ class ToolbarPanel(
     private val actions: BoardActions,
     private val selectionState: SelectionState,
     private val stateRepository: StateRepository,
-) : JToolBar() {
+) : JToolBar(JToolBar.VERTICAL) {
 
     private val lockBtn = JButton()
     private val conditionalButtons = mutableListOf<Pair<JButton, () -> Boolean>>()
@@ -21,11 +21,13 @@ class ToolbarPanel(
     init {
         isFloatable = false
 
+        // Selection
         always(Icons.selectAll,   LocaleService.get("toolbar.selectAll"))              { actions.selectAll() }
         cond({ actions.hasSelection() },
              Icons.deselectAll, LocaleService.get("toolbar.deselectAll"))             { actions.deselectAll() }
-        cond({ actions.hasUnlockedSelected() },
-             Icons.rotate60,    LocaleService.get("toolbar.rotate60"))                { actions.rotate60() }
+        addSeparator()
+
+        // Ordering / depth
         cond({ actions.hasUnlockedSelected() },
              Icons.bringToBack,  LocaleService.get("toolbar.bringToBack"))            { actions.bringToBack() }
         cond({ actions.hasUnlockedSelected() },
@@ -34,16 +36,22 @@ class ToolbarPanel(
              Icons.indexUp,     LocaleService.get("toolbar.indexUp"))                 { actions.indexUp() }
         cond({ actions.hasUnlockedSelected() },
              Icons.bringToFront, LocaleService.get("toolbar.bringToFront"))           { actions.bringToFront() }
-        cond({ actions.hasUnlockedSelected() },
-             Icons.delete,      LocaleService.get("toolbar.delete"))                  { actions.delete() }
-        always(Icons.refreshBags, LocaleService.get("toolbar.refreshBags"))           { actions.refreshBags() }
         addSeparator()
+
+        // Actions
+        cond({ actions.hasUnlockedSelected() },
+             Icons.rotate60,    LocaleService.get("toolbar.rotate60"))                { actions.rotate60() }
         cond({ actions.hasUnlockedSelected() },
              Icons.flip,    LocaleService.get("toolbar.flip"))                        { actions.flip() }
-        cond({ actions.hasUnlockedSelected() },
-             Icons.stack,   LocaleService.get("toolbar.stack"))                       { actions.stack() }
         cond({ actions.hasAtLeast2UnlockedSelected() },
              Icons.shuffle, LocaleService.get("toolbar.shuffle"))                     { actions.shuffle() }
+        cond({ actions.hasUnlockedSelected() },
+             Icons.delete,      LocaleService.get("toolbar.delete"))                  { actions.delete() }
+        addSeparator()
+
+        // Layout
+        cond({ actions.hasUnlockedSelected() },
+            Icons.stack,   LocaleService.get("toolbar.stack"))                        { actions.stack() }
         cond({ actions.hasAtLeast2UnlockedSelected() },
              Icons.spreadH, LocaleService.get("toolbar.spreadH"))                     { actions.spreadHorizontal() }
         cond({ actions.hasAtLeast2UnlockedSelected() },
@@ -52,8 +60,13 @@ class ToolbarPanel(
              Icons.grid,    LocaleService.get("toolbar.arrangeGrid"))                 { actions.arrangeGrid() }
         addSeparator()
 
+        // Lock
         lockBtn.addActionListener { actions.toggleLock() }
         add(lockBtn)
+        addSeparator()
+
+        // System
+        always(Icons.refreshBags, LocaleService.get("toolbar.refreshBags"))           { actions.refreshBags() }
 
         selectionState.addListener { refreshButtons() }
         refreshButtons()

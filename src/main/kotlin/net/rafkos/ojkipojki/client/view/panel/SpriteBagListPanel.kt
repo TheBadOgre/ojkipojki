@@ -42,7 +42,7 @@ class SpriteBagListPanel(
 ) : JPanel(BorderLayout()) {
 
     private val imageCache = mutableMapOf<SpriteId, BufferedImage?>()
-    private val collapsedBags = mutableSetOf<String>()
+    private val expandedBags = mutableSetOf<String>()
 
     private val contentPanel = object : JPanel(), Scrollable {
         init { layout = BoxLayout(this, BoxLayout.Y_AXIS) }
@@ -58,15 +58,15 @@ class SpriteBagListPanel(
     init {
         preferredSize = Dimension(220, 0)
 
+        val scroll = JScrollPane(contentPanel)
+        scroll.horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        add(scroll, BorderLayout.CENTER)
+
         val sliderPanel = JPanel(BorderLayout(4, 0))
         sliderPanel.border = BorderFactory.createEmptyBorder(4, 6, 4, 6)
         sliderPanel.add(JLabel(LocaleService.get("spritebag.size")), BorderLayout.WEST)
         sliderPanel.add(sizeSlider, BorderLayout.CENTER)
-        add(sliderPanel, BorderLayout.NORTH)
-
-        val scroll = JScrollPane(contentPanel)
-        scroll.horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
-        add(scroll, BorderLayout.CENTER)
+        add(sliderPanel, BorderLayout.SOUTH)
 
         sizeSlider.addChangeListener { rebuild() }
     }
@@ -90,7 +90,7 @@ class SpriteBagListPanel(
 
             for (bag in bags.sortedBy { it.id.id }) {
                 val totalOnBoard = bag.sprites.sumOf { tokensBySpriteId[it.id]?.size ?: 0 }
-                val collapsed = bag.id.id in collapsedBags
+                val collapsed = bag.id.id !in expandedBags
 
                 contentPanel.add(bagHeader(bag, totalOnBoard, previewSize, collapsed))
 
@@ -131,7 +131,7 @@ class SpriteBagListPanel(
         arrow.border = BorderFactory.createEmptyBorder(0, 0, 0, 2)
         arrow.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
-                if (bag.id.id in collapsedBags) collapsedBags.remove(bag.id.id) else collapsedBags.add(bag.id.id)
+                if (bag.id.id in expandedBags) expandedBags.remove(bag.id.id) else expandedBags.add(bag.id.id)
                 rebuild()
             }
         })

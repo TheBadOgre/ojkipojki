@@ -19,12 +19,16 @@ import net.rafkos.ojkipojki.client.view.state.TokenAnimator
 import net.rafkos.ojkipojki.client.view.state.ViewportState
 import net.rafkos.ojkipojki.shared.locale.LocaleService
 import java.awt.BorderLayout
+import java.awt.Dimension
+import java.awt.Insets
 import java.awt.event.ActionEvent
 import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
 import javax.swing.AbstractAction
+import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JFrame
+import javax.swing.JPanel
 import javax.swing.JSplitPane
 import javax.swing.KeyStroke
 import javax.swing.WindowConstants
@@ -74,12 +78,44 @@ class MainWindow(
 
         statusBarPanel = StatusBarPanel(serverIp)
 
-        val splitPane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, boardPanel, spriteBagListPanel)
+        // Sidebar: toggle strip + sprite panel
+        val toggleBtn = JButton("«")
+        toggleBtn.margin = Insets(4, 2, 4, 2)
+        toggleBtn.isFocusPainted = false
+        toggleBtn.toolTipText = LocaleService.get("sidebar.collapse")
+
+        val stripPanel = JPanel(BorderLayout())
+        stripPanel.add(toggleBtn, BorderLayout.NORTH)
+
+        val sidebarContainer = object : JPanel(BorderLayout()) {
+            override fun getMinimumSize(): Dimension = Dimension(stripPanel.preferredSize.width, 0)
+        }
+        sidebarContainer.add(stripPanel, BorderLayout.WEST)
+        sidebarContainer.add(spriteBagListPanel, BorderLayout.CENTER)
+
+        val splitPane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, boardPanel, sidebarContainer)
         splitPane.resizeWeight = 1.0
         splitPane.dividerLocation = 1200 - 220
 
+        var sidebarExpanded = true
+        var lastDividerLocation = 1200 - 220
+
+        toggleBtn.addActionListener {
+            if (sidebarExpanded) {
+                lastDividerLocation = splitPane.dividerLocation
+                splitPane.dividerLocation = splitPane.width - stripPanel.width - splitPane.dividerSize
+                toggleBtn.text = "»"
+                toggleBtn.toolTipText = LocaleService.get("sidebar.expand")
+            } else {
+                splitPane.dividerLocation = lastDividerLocation
+                toggleBtn.text = "«"
+                toggleBtn.toolTipText = LocaleService.get("sidebar.collapse")
+            }
+            sidebarExpanded = !sidebarExpanded
+        }
+
         layout = BorderLayout()
-        add(toolbarPanel, BorderLayout.NORTH)
+        add(toolbarPanel, BorderLayout.WEST)
         add(splitPane, BorderLayout.CENTER)
         add(statusBarPanel, BorderLayout.SOUTH)
 
