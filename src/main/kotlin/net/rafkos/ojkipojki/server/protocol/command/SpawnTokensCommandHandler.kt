@@ -8,6 +8,8 @@ import net.rafkos.ojkipojki.shared.protocol.Handler
 import net.rafkos.ojkipojki.shared.protocol.command.SpawnTokensCommand
 import net.rafkos.ojkipojki.shared.protocol.event.SomeTokensUpdatedEvent
 import java.util.UUID
+import kotlin.math.ceil
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 class SpawnTokensCommandHandler : Handler<SpawnTokensCommand> {
@@ -16,17 +18,40 @@ class SpawnTokensCommandHandler : Handler<SpawnTokensCommand> {
         val sprites = if (action.spriteId != null) bag.sprites.filter { it.id == action.spriteId } else bag.sprites
         val baseIndex = (ServerContext.modelRepository.findAllTokens().maxOfOrNull { it.index.value } ?: -1) + 1
         val spawnedIds = mutableSetOf<TokenId>()
-        sprites.forEachIndexed { i, sprite ->
-            val model = TokenModel()
-            model.id = TokenId(UUID.randomUUID())
-            model.spriteId = sprite.id
-            val baseX = action.position?.x ?: Random.nextInt(-100, 101)
-            val baseY = action.position?.y ?: 0
-            model.position.apply(Position(x = baseX, y = i * 20 + baseY))
-            model.index.value = baseIndex + i
-            ServerContext.modelRepository.saveToken(model)
-            spawnedIds.add(model.id)
+
+        val n = sprites.size
+        val gridCols = ceil(sqrt(n.toDouble())).toInt().coerceAtLeast(1)
+        val gridRows = ceil(n.toDouble() / gridCols).toInt()
+        val spacing = 80
+        val count = action.count.coerceAtLeast(1)
+        val setCols = ceil(sqrt(count.toDouble())).toInt().coerceAtLeast(1)
+
+        for (setIndex in 0 until count) {
+            val baseX: Int
+            val baseY: Int
+            if (action.position != null) {
+                val setCol = setIndex % setCols
+                val setRow = setIndex / setCols
+                baseX = action.position.x + setCol * (gridCols * spacing + spacing)
+                baseY = action.position.y + setRow * (gridRows * spacing + spacing)
+            } else {
+                baseX = Random.nextInt(-400, 401)
+                baseY = Random.nextInt(-400, 401)
+            }
+
+            sprites.forEachIndexed { i, sprite ->
+                val col = i % gridCols
+                val row = i / gridCols
+                val model = TokenModel()
+                model.id = TokenId(UUID.randomUUID())
+                model.spriteId = sprite.id
+                model.position.apply(Position(x = baseX + col * spacing, y = baseY + row * spacing))
+                model.index.value = baseIndex + setIndex * n + i
+                ServerContext.modelRepository.saveToken(model)
+                spawnedIds.add(model.id)
+            }
         }
+
         val tokenActions = ServerContext.modelRepository.findAllTokens()
             .filter { it.id in spawnedIds }
             .map { SomeTokensUpdatedEvent.TokenAction.Update(it.toState()) }
