@@ -1,6 +1,6 @@
 package net.rafkos.ojkipojki.client.view.action
 
-import net.rafkos.ojkipojki.client.command.CommandTransmitter
+import net.rafkos.ojkipojki.client.protocol.command.CommandTransmitter
 import net.rafkos.ojkipojki.client.view.state.ViewportState
 import net.rafkos.ojkipojki.shared.domain.Position
 import net.rafkos.ojkipojki.shared.domain.SpriteBagId

@@ -1,7 +1,7 @@
 package net.rafkos.ojkipojki.client.protocol
 
 import net.rafkos.ojkipojki.client.ClientContext
-import net.rafkos.ojkipojki.client.command.CommandTransmitter
+import net.rafkos.ojkipojki.client.protocol.command.CommandTransmitter
 import net.rafkos.ojkipojki.client.view.MainWindow
 import net.rafkos.ojkipojki.client.view.action.CommandDebouncer
 import net.rafkos.ojkipojki.client.application.SpriteBagDirectoryLoader

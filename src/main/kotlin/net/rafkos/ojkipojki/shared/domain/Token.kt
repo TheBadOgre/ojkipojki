@@ -10,4 +10,6 @@ data class Token(
     val index: Index = Index(0),
     val flipped: Boolean = false,
     val locked: Boolean = false,
-) : Serializable
+) : Serializable {
+    companion object { private const val serialVersionUID = 1L }
+}

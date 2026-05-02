@@ -17,7 +17,6 @@ class CommandReceiver(
 
     fun start() {
         Thread {
-            CommandContext.clientId = clientId
             while (running) {
                 val cmd = try {
                     @Suppress("UNCHECKED_CAST")
@@ -26,8 +25,10 @@ class CommandReceiver(
 
                 if (cmd != null) {
                     log.debug("Received: ${cmd.javaClass.simpleName}")
-
-                    ServerContext.commandDispatcher.dispatch(cmd)
+                    ServerContext.commandExecutor.execute {
+                        CommandContext.clientId = clientId
+                        ServerContext.commandDispatcher.dispatch(cmd)
+                    }
                 } else {
                     running = false
                     onDisconnected?.invoke()

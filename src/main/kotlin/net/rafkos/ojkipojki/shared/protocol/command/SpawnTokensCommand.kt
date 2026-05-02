@@ -8,4 +8,6 @@ data class SpawnTokensCommand(
     val spriteBagId: SpriteBagId,
     val position: Position? = null,
     val spriteId: SpriteId? = null,
-) : Command
+) : Command {
+    companion object { private const val serialVersionUID = 1L }
+}

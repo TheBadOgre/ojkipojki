@@ -1,7 +1,7 @@
 package net.rafkos.ojkipojki.client.view
 
 import net.rafkos.ojkipojki.client.application.StateRepository
-import net.rafkos.ojkipojki.client.command.CommandTransmitter
+import net.rafkos.ojkipojki.client.protocol.command.CommandTransmitter
 import net.rafkos.ojkipojki.client.view.action.BoardActions
 import net.rafkos.ojkipojki.client.view.action.CommandDebouncer
 import net.rafkos.ojkipojki.client.view.action.PointerCommandSender

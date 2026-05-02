@@ -5,8 +5,14 @@ import net.rafkos.ojkipojki.shared.domain.TokenId
 import java.io.Serializable
 
 data class SomeTokensUpdatedEvent(val tokenActions: List<TokenAction>) : Event {
+    companion object { private const val serialVersionUID = 1L }
     sealed class TokenAction : Serializable {
-        data class Update(val token: Token) : TokenAction()
-        data class Delete(val tokenId: TokenId) : TokenAction()
+        companion object { private const val serialVersionUID = 1L }
+        data class Update(val token: Token) : TokenAction() {
+            companion object { private const val serialVersionUID = 1L }
+        }
+        data class Delete(val tokenId: TokenId) : TokenAction() {
+            companion object { private const val serialVersionUID = 1L }
+        }
     }
 }

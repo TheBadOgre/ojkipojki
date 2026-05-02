@@ -27,6 +27,7 @@ class BoardWheelController(
                 val newRot = Rotation((token.rotation.degrees + delta + 360.0) % 360.0)
                 debouncer.enqueue(MoveTokensCommand.TokenIdAndPosition(id, null, newRot, null, null))
             }
+            debouncer.flush()
         } else {
             val factor = if (e.wheelRotation < 0) 1.1 else 1.0 / 1.1
             val oldZoom = viewportState.zoom

@@ -4,6 +4,8 @@ import net.rafkos.ojkipojki.client.ClientContext
 import net.rafkos.ojkipojki.shared.protocol.Handler
 import net.rafkos.ojkipojki.shared.protocol.event.SomeTokensUpdatedEvent
 
+// Fired after every command that modifies specific tokens (move, spawn, delete, shuffle, lock).
+// Applies individual update/delete actions rather than replacing the full list.
 class SomeTokensUpdatedEventHandler : Handler<SomeTokensUpdatedEvent> {
     override fun handle(action: SomeTokensUpdatedEvent) {
         action.tokenActions.forEach { tokenAction ->

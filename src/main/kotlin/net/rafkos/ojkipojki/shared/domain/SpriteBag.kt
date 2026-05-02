@@ -6,4 +6,6 @@ data class SpriteBag(
     val id: SpriteBagId,
     val groupName: String,
     val sprites: List<Sprite>
-) : Serializable
+) : Serializable {
+    companion object { private const val serialVersionUID = 1L }
+}

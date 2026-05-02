@@ -12,6 +12,9 @@ import net.rafkos.ojkipojki.server.protocol.ConnectionManager
 import net.rafkos.ojkipojki.server.protocol.command.CommandDispatcher
 import net.rafkos.ojkipojki.server.protocol.event.EventBroadcastService
 import org.apache.logging.log4j.LogManager
+import java.util.concurrent.Executors
+import javax.swing.JOptionPane
+import javax.swing.SwingUtilities
 
 object ServerRunner {
     private val log = LogManager.getLogger(ServerRunner::class.java)
@@ -25,7 +28,18 @@ object ServerRunner {
         ServerContext.modelRepository = ModelRepository()
         ServerContext.pointerRepository = PointerRepository()
         ServerContext.clientColorRegistry = ClientColorRegistry()
-        GameLoader.tryLoad(ServerContext.modelRepository)
+        ServerContext.commandExecutor = Executors.newSingleThreadExecutor()
+        val saveLoaded = GameLoader.tryLoad(ServerContext.modelRepository)
+        if (!saveLoaded) {
+            SwingUtilities.invokeLater {
+                JOptionPane.showMessageDialog(
+                    null,
+                    "Save file '${GamePersistence.saveFile.name}' is corrupted and could not be loaded.\nStarting a fresh session.",
+                    "Corrupted Save File",
+                    JOptionPane.WARNING_MESSAGE,
+                )
+            }
+        }
 
         val connectionManager = ConnectionManager(serverPort)
 
@@ -47,6 +61,7 @@ object ServerRunner {
             autoSave.stop()
             tokenSyncHeartbeat.stop()
             connectionManager.shutdown()
+            ServerContext.commandExecutor.shutdown()
             try {
                 GamePersistence.save(ServerContext.modelRepository)
                 log.info("Saved game state on exit")

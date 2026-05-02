@@ -1,7 +1,7 @@
 package net.rafkos.ojkipojki.client.view.action
 
 import net.rafkos.ojkipojki.client.application.StateRepository
-import net.rafkos.ojkipojki.client.command.CommandTransmitter
+import net.rafkos.ojkipojki.client.protocol.command.CommandTransmitter
 import net.rafkos.ojkipojki.client.application.SpriteBagDirectoryLoader
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.shared.domain.Index

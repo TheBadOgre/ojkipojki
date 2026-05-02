@@ -13,5 +13,7 @@ data class MoveTokensCommand(val adjustments: List<TokenIdAndPosition>) : Comman
         val rotation: Rotation?,
         val flipped: Boolean?,
         val index: Index?
-    ) : Serializable
+    ) : Serializable {
+        companion object { private const val serialVersionUID = 1L }
+    }
 }

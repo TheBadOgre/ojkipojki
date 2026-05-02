@@ -1,6 +1,6 @@
 package net.rafkos.ojkipojki.client.view.action
 
-import net.rafkos.ojkipojki.client.command.CommandTransmitter
+import net.rafkos.ojkipojki.client.protocol.command.CommandTransmitter
 import net.rafkos.ojkipojki.shared.protocol.command.MoveTokensCommand
 import net.rafkos.ojkipojki.shared.domain.TokenId
 import javax.swing.Timer

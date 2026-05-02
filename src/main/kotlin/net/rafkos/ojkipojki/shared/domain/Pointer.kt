@@ -8,4 +8,6 @@ data class Pointer(
     val red: Int,
     val green: Int,
     val blue: Int
-) : Serializable
+) : Serializable {
+    companion object { private const val serialVersionUID = 1L }
+}

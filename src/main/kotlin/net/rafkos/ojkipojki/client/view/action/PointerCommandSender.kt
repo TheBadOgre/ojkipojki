@@ -1,6 +1,6 @@
 package net.rafkos.ojkipojki.client.view.action
 
-import net.rafkos.ojkipojki.client.command.CommandTransmitter
+import net.rafkos.ojkipojki.client.protocol.command.CommandTransmitter
 import net.rafkos.ojkipojki.client.view.panel.BoardPanel
 import net.rafkos.ojkipojki.client.view.state.ViewportState
 import net.rafkos.ojkipojki.shared.protocol.command.MovePointerCommand
