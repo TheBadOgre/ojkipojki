@@ -5,15 +5,34 @@ import net.rafkos.ojkipojki.server.model.SpriteBagModel
 import net.rafkos.ojkipojki.shared.protocol.Handler
 import net.rafkos.ojkipojki.shared.protocol.command.UploadSpriteBagsCommand
 import net.rafkos.ojkipojki.shared.protocol.event.SpriteBagsUpdatedEvent
+import net.rafkos.ojkipojki.shared.protocol.event.TokensUpdatedEvent
 
 class UploadSpriteBagsCommandHandler : Handler<UploadSpriteBagsCommand> {
     override fun handle(action: UploadSpriteBagsCommand) {
+        val oldSpriteIds = action.spriteBags.flatMap { bag ->
+            ServerContext.modelRepository.findSpriteBagById(bag.id)?.sprites?.map { it.id } ?: emptyList()
+        }.toSet()
+
         action.spriteBags.forEach { state ->
             val model = ServerContext.modelRepository.findSpriteBagById(state.id) ?: SpriteBagModel()
             model.apply(state)
             ServerContext.modelRepository.saveSpriteBag(model)
         }
-        val state = ServerContext.modelRepository.findAllSpriteBags().map { it.toState() }.toList()
-        ServerContext.eventBroadcastService.broadcast(SpriteBagsUpdatedEvent(state))
+
+        val newSpriteIds = action.spriteBags.flatMap { bag ->
+            ServerContext.modelRepository.findSpriteBagById(bag.id)?.sprites?.map { it.id } ?: emptyList()
+        }.toSet()
+
+        val removedSpriteIds = oldSpriteIds - newSpriteIds
+        if (removedSpriteIds.isNotEmpty()) {
+            ServerContext.modelRepository.findAllTokens()
+                .filter { it.spriteId in removedSpriteIds }
+                .forEach { ServerContext.modelRepository.deleteToken(it.id) }
+            val tokens = ServerContext.modelRepository.findAllTokens().map { it.toState() }
+            ServerContext.eventBroadcastService.broadcast(TokensUpdatedEvent(tokens))
+        }
+
+        val spriteBags = ServerContext.modelRepository.findAllSpriteBags().map { it.toState() }.toList()
+        ServerContext.eventBroadcastService.broadcast(SpriteBagsUpdatedEvent(spriteBags))
     }
 }
