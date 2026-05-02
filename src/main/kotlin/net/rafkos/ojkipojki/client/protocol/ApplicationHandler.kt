@@ -30,6 +30,7 @@ class ApplicationHandler(
                 window.tokenAnimator.syncWithTokens(tokens)
                 selectionState.pruneAgainst(tokens)
                 window.toolbarPanel.refresh()
+                window.spriteBagListPanel.rebuild()
             }
         }
         ClientContext.onSpriteBagsUpdated = {

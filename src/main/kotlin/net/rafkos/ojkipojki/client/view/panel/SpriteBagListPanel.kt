@@ -76,7 +76,7 @@ class SpriteBagListPanel(
         rebuild()
     }
 
-    private fun rebuild() {
+    fun rebuild() {
         contentPanel.removeAll()
         val previewSize = sizeSlider.value
         val tokensBySpriteId = stateRepository.findAllTokens().groupBy { it.spriteId }
