@@ -14,6 +14,7 @@ class SpawnTokensCommandHandler : Handler<SpawnTokensCommand> {
     override fun handle(action: SpawnTokensCommand) {
         val bag = ServerContext.modelRepository.findSpriteBagById(action.spriteBagId) ?: return
         val sprites = if (action.spriteId != null) bag.sprites.filter { it.id == action.spriteId } else bag.sprites
+        val baseIndex = (ServerContext.modelRepository.findAllTokens().maxOfOrNull { it.index.value } ?: -1) + 1
         val spawnedIds = mutableSetOf<TokenId>()
         sprites.forEachIndexed { i, sprite ->
             val model = TokenModel()
@@ -22,6 +23,7 @@ class SpawnTokensCommandHandler : Handler<SpawnTokensCommand> {
             val baseX = action.position?.x ?: Random.nextInt(-100, 101)
             val baseY = action.position?.y ?: 0
             model.position.apply(Position(x = baseX, y = i * 20 + baseY))
+            model.index.value = baseIndex + i
             ServerContext.modelRepository.saveToken(model)
             spawnedIds.add(model.id)
         }
