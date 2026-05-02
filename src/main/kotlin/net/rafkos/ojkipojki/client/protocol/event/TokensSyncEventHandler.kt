@@ -2,10 +2,10 @@ package net.rafkos.ojkipojki.client.protocol.event
 
 import net.rafkos.ojkipojki.client.ClientContext
 import net.rafkos.ojkipojki.shared.protocol.Handler
-import net.rafkos.ojkipojki.shared.protocol.event.TokensUpdatedEvent
+import net.rafkos.ojkipojki.shared.protocol.event.TokensSyncEvent
 
-class TokensUpdatedEventHandler : Handler<TokensUpdatedEvent> {
-    override fun handle(action: TokensUpdatedEvent) {
+class TokensSyncEventHandler : Handler<TokensSyncEvent> {
+    override fun handle(action: TokensSyncEvent) {
         ClientContext.stateRepository.replaceAllTokens(action.tokens)
         ClientContext.onTokensUpdated?.invoke()
     }

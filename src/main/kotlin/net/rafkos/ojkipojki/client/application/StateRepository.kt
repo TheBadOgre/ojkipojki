@@ -27,6 +27,7 @@ class StateRepository {
     fun findTokenById(id: TokenId): Token? = tokens[id]
     fun findAllTokens(): List<Token> = tokens.values.toList()
     fun saveToken(token: Token) { tokens[token.id] = token }
+    fun deleteToken(id: TokenId) { tokens.remove(id) }
     fun replaceAllTokens(incoming: List<Token>) {
         tokens.clear()
         incoming.forEach { tokens[it.id] = it }

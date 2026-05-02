@@ -5,15 +5,17 @@ import net.rafkos.ojkipojki.server.model.TokenModel
 import net.rafkos.ojkipojki.shared.domain.TokenId
 import net.rafkos.ojkipojki.shared.protocol.Handler
 import net.rafkos.ojkipojki.shared.protocol.command.MoveTokensCommand
-import net.rafkos.ojkipojki.shared.protocol.event.TokensUpdatedEvent
+import net.rafkos.ojkipojki.shared.protocol.event.SomeTokensUpdatedEvent
 
 class MoveTokensCommandHandler : Handler<MoveTokensCommand> {
     override fun handle(action: MoveTokensCommand) {
+        val adjustedIds = mutableSetOf<TokenId>()
         val oldIndices = mutableMapOf<TokenId, Int>()
 
         action.adjustments.forEach { adjustment ->
             val model = ServerContext.modelRepository.findTokenById(adjustment.tokenId) ?: return@forEach
             if (model.locked) return@forEach
+            adjustedIds.add(adjustment.tokenId)
             if (adjustment.index != null) oldIndices[adjustment.tokenId] = model.index.value
             adjustment.position?.let { model.position.apply(it) }
             adjustment.rotation?.let { model.rotation.apply(it) }
@@ -23,8 +25,14 @@ class MoveTokensCommandHandler : Handler<MoveTokensCommand> {
         }
         if (oldIndices.isNotEmpty()) normalizeIndices(oldIndices)
 
-        val tokens = ServerContext.modelRepository.findAllTokens().map { it.toState() }
-        ServerContext.eventBroadcastService.broadcast(TokensUpdatedEvent(tokens))
+        val tokenActions = if (oldIndices.isNotEmpty()) {
+            ServerContext.modelRepository.findAllTokens().map { SomeTokensUpdatedEvent.TokenAction.Update(it.toState()) }
+        } else {
+            ServerContext.modelRepository.findAllTokens()
+                .filter { it.id in adjustedIds }
+                .map { SomeTokensUpdatedEvent.TokenAction.Update(it.toState()) }
+        }
+        ServerContext.eventBroadcastService.broadcast(SomeTokensUpdatedEvent(tokenActions))
     }
 
     private fun normalizeIndices(oldIndices: Map<TokenId, Int>) {

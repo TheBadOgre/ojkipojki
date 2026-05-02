@@ -1,9 +1,9 @@
 package net.rafkos.ojkipojki.client.application
 
 import net.rafkos.ojkipojki.shared.domain.Sprite
-import net.rafkos.ojkipojki.shared.domain.SpriteId
 import net.rafkos.ojkipojki.shared.domain.SpriteBag
 import net.rafkos.ojkipojki.shared.domain.SpriteBagId
+import net.rafkos.ojkipojki.shared.domain.SpriteId
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -36,7 +36,7 @@ object SpriteLoader {
 
     /**
      * Finds all distinct non-black colors in the mask. For each color, creates
-     * a [Sprite] whose front/back images are cropped to the bounding box of that
+     * a [net.rafkos.ojkipojki.shared.domain.Sprite] whose front/back images are cropped to the bounding box of that
      * color's region, with every pixel not belonging to that color made transparent.
      */
     private fun extractSprites(
@@ -85,7 +85,7 @@ object SpriteLoader {
             Sprite(
                 id = spriteId,
                 frontImageBytes = croppedFront.toPngBytes(),
-                backImageBytes  = croppedBack.toPngBytes(),
+                backImageBytes = croppedBack.toPngBytes(),
             )
         }
     }

@@ -1,6 +1,7 @@
 package net.rafkos.ojkipojki.server
 
 import net.rafkos.ojkipojki.server.application.AutoSaveService
+import net.rafkos.ojkipojki.server.application.TokenSyncHeartbeatService
 import net.rafkos.ojkipojki.server.application.ClientColorRegistry
 import net.rafkos.ojkipojki.server.application.GameLoader
 import net.rafkos.ojkipojki.server.application.GamePersistence
@@ -16,6 +17,7 @@ object ServerRunner {
     private val log = LogManager.getLogger(ServerRunner::class.java)
 
     private const val AUTO_SAVE_INTERVAL_MS = 5 * 60 * 1000L
+    private const val TOKEN_SYNC_INTERVAL_MS = 5_000L
 
     fun startServer(serverPort: Int) {
         log.info("Starting server on port $serverPort")
@@ -38,8 +40,12 @@ object ServerRunner {
         val autoSave = AutoSaveService(ServerContext.modelRepository, AUTO_SAVE_INTERVAL_MS)
         autoSave.start()
 
+        val tokenSyncHeartbeat = TokenSyncHeartbeatService(ServerContext.modelRepository, ServerContext.eventBroadcastService, TOKEN_SYNC_INTERVAL_MS)
+        tokenSyncHeartbeat.start()
+
         Runtime.getRuntime().addShutdownHook(Thread {
             autoSave.stop()
+            tokenSyncHeartbeat.stop()
             connectionManager.shutdown()
             try {
                 GamePersistence.save(ServerContext.modelRepository)

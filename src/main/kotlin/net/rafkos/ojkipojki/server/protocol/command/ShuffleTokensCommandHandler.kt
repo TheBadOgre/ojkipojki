@@ -3,7 +3,7 @@ package net.rafkos.ojkipojki.server.protocol.command
 import net.rafkos.ojkipojki.server.ServerContext
 import net.rafkos.ojkipojki.shared.protocol.Handler
 import net.rafkos.ojkipojki.shared.protocol.command.ShuffleTokensCommand
-import net.rafkos.ojkipojki.shared.protocol.event.TokensUpdatedEvent
+import net.rafkos.ojkipojki.shared.protocol.event.SomeTokensUpdatedEvent
 
 class ShuffleTokensCommandHandler : Handler<ShuffleTokensCommand> {
     override fun handle(action: ShuffleTokensCommand) {
@@ -22,7 +22,7 @@ class ShuffleTokensCommandHandler : Handler<ShuffleTokensCommand> {
             ServerContext.modelRepository.saveToken(model)
         }
 
-        val tokens = ServerContext.modelRepository.findAllTokens().map { it.toState() }
-        ServerContext.eventBroadcastService.broadcast(TokensUpdatedEvent(tokens))
+        val tokenActions = models.map { SomeTokensUpdatedEvent.TokenAction.Update(it.toState()) }
+        ServerContext.eventBroadcastService.broadcast(SomeTokensUpdatedEvent(tokenActions))
     }
 }

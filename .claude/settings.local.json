@@ -15,7 +15,9 @@
       "Bash(rm -f ~/.gradle/caches/journal-1/journal-1.lock)",
       "Bash(./gradlew compileKotlin --no-daemon)",
       "Bash(./gradlew compileKotlin -q)",
-      "Bash(./gradlew compileKotlin --rerun-tasks -q)"
+      "Bash(./gradlew compileKotlin --rerun-tasks -q)",
+      "Bash(mv /mnt/e/workspace/ojkipojki/src/main/kotlin/net/rafkos/ojkipojki/shared/protocol/event/TokensUpdatedEvent.kt /mnt/e/workspace/ojkipojki/src/main/kotlin/net/rafkos/ojkipojki/shared/protocol/event/TokensSyncEvent.kt)",
+      "Bash(mv /mnt/e/workspace/ojkipojki/src/main/kotlin/net/rafkos/ojkipojki/client/protocol/event/TokensUpdatedEventHandler.kt /mnt/e/workspace/ojkipojki/src/main/kotlin/net/rafkos/ojkipojki/client/protocol/event/TokensSyncEventHandler.kt)"
     ]
   }
 }

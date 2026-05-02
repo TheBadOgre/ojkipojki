@@ -6,7 +6,7 @@ import net.rafkos.ojkipojki.server.protocol.event.EventTransmitter
 import net.rafkos.ojkipojki.shared.protocol.event.ConnectedClientsUpdateEvent
 import net.rafkos.ojkipojki.shared.protocol.event.PointersUpdatedEvent
 import net.rafkos.ojkipojki.shared.protocol.event.SpriteBagsUpdatedEvent
-import net.rafkos.ojkipojki.shared.protocol.event.TokensUpdatedEvent
+import net.rafkos.ojkipojki.shared.protocol.event.TokensSyncEvent
 import org.apache.logging.log4j.LogManager
 import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap
@@ -29,7 +29,7 @@ class ClientSessionManager : ClientConnectionListener {
         log.info("Session created for client $clientId")
 
         ServerContext.eventBroadcastService.broadcast(SpriteBagsUpdatedEvent(ServerContext.modelRepository.findAllSpriteBags().map { it.toState() }), clientId)
-        ServerContext.eventBroadcastService.broadcast(TokensUpdatedEvent(ServerContext.modelRepository.findAllTokens().map { it.toState() }), clientId)
+        ServerContext.eventBroadcastService.broadcast(TokensSyncEvent(ServerContext.modelRepository.findAllTokens().map { it.toState() }), clientId)
         ServerContext.eventBroadcastService.broadcast(PointersUpdatedEvent(ServerContext.pointerRepository.findAllExcept(clientId)), clientId)
         ServerContext.eventBroadcastService.broadcast(ConnectedClientsUpdateEvent(sessions.size))
     }

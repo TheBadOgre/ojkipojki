@@ -5,7 +5,7 @@ import net.rafkos.ojkipojki.server.model.SpriteBagModel
 import net.rafkos.ojkipojki.shared.protocol.Handler
 import net.rafkos.ojkipojki.shared.protocol.command.UploadSpriteBagsCommand
 import net.rafkos.ojkipojki.shared.protocol.event.SpriteBagsUpdatedEvent
-import net.rafkos.ojkipojki.shared.protocol.event.TokensUpdatedEvent
+import net.rafkos.ojkipojki.shared.protocol.event.TokensSyncEvent
 
 class UploadSpriteBagsCommandHandler : Handler<UploadSpriteBagsCommand> {
     override fun handle(action: UploadSpriteBagsCommand) {
@@ -28,9 +28,10 @@ class UploadSpriteBagsCommandHandler : Handler<UploadSpriteBagsCommand> {
             ServerContext.modelRepository.findAllTokens()
                 .filter { it.spriteId in removedSpriteIds }
                 .forEach { ServerContext.modelRepository.deleteToken(it.id) }
-            val tokens = ServerContext.modelRepository.findAllTokens().map { it.toState() }
-            ServerContext.eventBroadcastService.broadcast(TokensUpdatedEvent(tokens))
         }
+
+        val tokens = ServerContext.modelRepository.findAllTokens().map { it.toState() }
+        ServerContext.eventBroadcastService.broadcast(TokensSyncEvent(tokens))
 
         val spriteBags = ServerContext.modelRepository.findAllSpriteBags().map { it.toState() }.toList()
         ServerContext.eventBroadcastService.broadcast(SpriteBagsUpdatedEvent(spriteBags))

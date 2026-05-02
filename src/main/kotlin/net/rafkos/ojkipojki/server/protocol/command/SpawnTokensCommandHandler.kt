@@ -6,7 +6,7 @@ import net.rafkos.ojkipojki.shared.domain.Position
 import net.rafkos.ojkipojki.shared.domain.TokenId
 import net.rafkos.ojkipojki.shared.protocol.Handler
 import net.rafkos.ojkipojki.shared.protocol.command.SpawnTokensCommand
-import net.rafkos.ojkipojki.shared.protocol.event.TokensUpdatedEvent
+import net.rafkos.ojkipojki.shared.protocol.event.SomeTokensUpdatedEvent
 import java.util.UUID
 import kotlin.random.Random
 
@@ -14,6 +14,7 @@ class SpawnTokensCommandHandler : Handler<SpawnTokensCommand> {
     override fun handle(action: SpawnTokensCommand) {
         val bag = ServerContext.modelRepository.findSpriteBagById(action.spriteBagId) ?: return
         val sprites = if (action.spriteId != null) bag.sprites.filter { it.id == action.spriteId } else bag.sprites
+        val spawnedIds = mutableSetOf<TokenId>()
         sprites.forEachIndexed { i, sprite ->
             val model = TokenModel()
             model.id = TokenId(UUID.randomUUID())
@@ -22,8 +23,11 @@ class SpawnTokensCommandHandler : Handler<SpawnTokensCommand> {
             val baseY = action.position?.y ?: 0
             model.position.apply(Position(x = baseX, y = i * 20 + baseY))
             ServerContext.modelRepository.saveToken(model)
+            spawnedIds.add(model.id)
         }
-        val tokens = ServerContext.modelRepository.findAllTokens().map { it.toState() }
-        ServerContext.eventBroadcastService.broadcast(TokensUpdatedEvent(tokens))
+        val tokenActions = ServerContext.modelRepository.findAllTokens()
+            .filter { it.id in spawnedIds }
+            .map { SomeTokensUpdatedEvent.TokenAction.Update(it.toState()) }
+        ServerContext.eventBroadcastService.broadcast(SomeTokensUpdatedEvent(tokenActions))
     }
 }

@@ -1,6 +1,5 @@
-package net.rafkos.ojkipojki.client.view.loader
+package net.rafkos.ojkipojki.client.application
 
-import net.rafkos.ojkipojki.client.application.SpriteLoader
 import net.rafkos.ojkipojki.shared.domain.SpriteBag
 import net.rafkos.ojkipojki.shared.domain.SpriteBagId
 import java.io.File

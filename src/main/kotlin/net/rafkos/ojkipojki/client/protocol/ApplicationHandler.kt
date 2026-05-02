@@ -4,7 +4,7 @@ import net.rafkos.ojkipojki.client.ClientContext
 import net.rafkos.ojkipojki.client.command.CommandTransmitter
 import net.rafkos.ojkipojki.client.view.MainWindow
 import net.rafkos.ojkipojki.client.view.action.CommandDebouncer
-import net.rafkos.ojkipojki.client.view.loader.SpriteBagDirectoryLoader
+import net.rafkos.ojkipojki.client.application.SpriteBagDirectoryLoader
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.client.view.state.ViewportState
 import net.rafkos.ojkipojki.shared.protocol.command.UploadSpriteBagsCommand
