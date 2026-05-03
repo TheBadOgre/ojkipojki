@@ -11,9 +11,17 @@ import javax.imageio.ImageIO
 
 object SpriteLoader {
     fun loadSprites(directory: File): List<SpriteBag> {
-        // Group files by sprite bag ID (the part before the first underscore)
-        val filesByBagId = directory.listFiles { f -> f.isFile && f.extension == "png" }
-            ?.groupBy { f -> f.nameWithoutExtension.substringBefore("_") }
+        val filesByBagId = directory.listFiles { f ->
+                f.isFile && f.extension.lowercase() in listOf("png", "jpg", "jpeg")
+            }
+            ?.mapNotNull { f ->
+                val name = f.nameWithoutExtension
+                val bagId = listOf("_front", "_back", "_mask").firstOrNull { name.endsWith(it) }
+                    ?.let { name.removeSuffix(it) }
+                    ?: return@mapNotNull null
+                bagId to f
+            }
+            ?.groupBy({ it.first }, { it.second })
             ?: return emptyList()
 
         return filesByBagId.mapNotNull { (bagIdStr, files) ->
