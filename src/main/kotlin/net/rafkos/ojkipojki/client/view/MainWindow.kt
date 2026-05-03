@@ -172,7 +172,7 @@ class MainWindow(
         bind(KeyStroke.getKeyStroke(KeyEvent.VK_D,              ctrl),         "indexDown")   { actions.indexDown() }
         bind(KeyStroke.getKeyStroke(KeyEvent.VK_F,              ctrl),         "indexUp")     { actions.indexUp() }
         bind(KeyStroke.getKeyStroke(KeyEvent.VK_F,              0),            "bringToFront"){ actions.bringToFront() }
-        bind(KeyStroke.getKeyStroke(KeyEvent.VK_TAB,            0),            "flip")        { actions.flip() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE,          0),            "flip")        { actions.flip() }
         bind(KeyStroke.getKeyStroke(KeyEvent.VK_X,              0),            "shuffle")     { actions.shuffle() }
         bind(KeyStroke.getKeyStroke(KeyEvent.VK_S,              0),            "stack")       { actions.stack() }
         bind(KeyStroke.getKeyStroke(KeyEvent.VK_H,              0),            "spreadH")     { actions.spreadHorizontal() }

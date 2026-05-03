@@ -96,8 +96,6 @@ class BoardPanel(
             val rect = overlay.toRectangle()
             g2.color = Color(0, 100, 255, 50)
             g2.fillRect(rect.x, rect.y, rect.width, rect.height)
-            g2.color = Color(0, 100, 255, 180)
-            g2.drawRect(rect.x, rect.y, rect.width, rect.height)
         }
     }
 

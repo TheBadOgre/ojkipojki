@@ -4,6 +4,8 @@ import net.rafkos.ojkipojki.server.ServerContext
 import net.rafkos.ojkipojki.server.protocol.command.CommandReceiver
 import net.rafkos.ojkipojki.server.protocol.event.EventTransmitter
 import net.rafkos.ojkipojki.shared.protocol.event.ConnectedClientsUpdateEvent
+import net.rafkos.ojkipojki.shared.protocol.event.GameInitializationEvent
+import net.rafkos.ojkipojki.shared.protocol.event.GameInitializationEvent.Status
 import net.rafkos.ojkipojki.shared.protocol.event.PointersUpdatedEvent
 import net.rafkos.ojkipojki.shared.protocol.event.SpriteBagsUpdatedEvent
 import net.rafkos.ojkipojki.shared.protocol.event.TokensSyncEvent
@@ -28,10 +30,17 @@ class ClientSessionManager : ClientConnectionListener {
         receiver.start()
         log.info("Session created for client $clientId")
 
+        ServerContext.eventBroadcastService.broadcast(GameInitializationEvent(Status.IN_PROGRESS, "initialization.receivingSprites", 0.1))
         ServerContext.eventBroadcastService.broadcast(SpriteBagsUpdatedEvent(ServerContext.modelRepository.findAllSpriteBags().map { it.toState() }), clientId)
+
+        ServerContext.eventBroadcastService.broadcast(GameInitializationEvent(Status.IN_PROGRESS, "initialization.receivingTokens", 0.5))
         ServerContext.eventBroadcastService.broadcast(TokensSyncEvent(ServerContext.modelRepository.findAllTokens().map { it.toState() }), clientId)
+
+        ServerContext.eventBroadcastService.broadcast(GameInitializationEvent(Status.IN_PROGRESS, "initialization.receivingConnectedClients", 0.9))
         ServerContext.eventBroadcastService.broadcast(PointersUpdatedEvent(ServerContext.pointerRepository.findAllExcept(clientId)), clientId)
         ServerContext.eventBroadcastService.broadcast(ConnectedClientsUpdateEvent(sessions.size))
+
+        ServerContext.eventBroadcastService.broadcast(GameInitializationEvent(Status.DONE, "initialization.finished", 1.0))
     }
 
     override fun onClientDisconnected(clientId: String) {
