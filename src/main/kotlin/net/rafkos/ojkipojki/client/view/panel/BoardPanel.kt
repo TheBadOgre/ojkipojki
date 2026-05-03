@@ -86,7 +86,7 @@ class BoardPanel(
         for (pointer in lastPointers) {
             val (px, py) = pointerAnimator.visualize(pointer)
             g2.color = Color(pointer.red, pointer.green, pointer.blue, 150)
-            val r = 16
+            val r = 32
             g2.fillOval((px - r).toInt(), (py - r).toInt(), r * 2, r * 2)
         }
 

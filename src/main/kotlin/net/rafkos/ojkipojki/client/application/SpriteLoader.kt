@@ -42,11 +42,8 @@ object SpriteLoader {
         }
     }
 
-    /**
-     * Finds all distinct non-black colors in the mask. For each color, creates
-     * a [net.rafkos.ojkipojki.shared.domain.Sprite] whose front/back images are cropped to the bounding box of that
-     * color's region, with every pixel not belonging to that color made transparent.
-     */
+    private data class BBox(var minX: Int, var maxX: Int, var minY: Int, var maxY: Int)
+
     private fun extractSprites(
         bagId: SpriteBagId,
         frontImage: BufferedImage,
@@ -56,39 +53,36 @@ object SpriteLoader {
         val width  = maskImage.width
         val height = maskImage.height
 
-        // Collect all unique sprite colors (ignore pure black = background)
-        val spriteColors = mutableSetOf<Int>()
+        // Bulk-read all three images into flat arrays — avoids per-pixel JNI overhead
+        val maskPixels  = maskImage.getRGB(0, 0, width, height, null, 0, width)
+        val frontPixels = frontImage.getRGB(0, 0, width, height, null, 0, width)
+        val backPixels  = backImage.getRGB(0, 0, width, height, null, 0, width)
+
+        // Single pass: collect colors and bounding boxes simultaneously
+        val bboxByColor = mutableMapOf<Int, BBox>()
         for (y in 0 until height) {
             for (x in 0 until width) {
-                val rgb = maskImage.getRGB(x, y) and 0x00FFFFFF  // strip alpha
-                if (rgb != 0x000000) spriteColors.add(rgb)
+                val rgb = maskPixels[y * width + x] and 0x00FFFFFF
+                if (rgb == 0x000000) continue
+                val bb = bboxByColor.getOrPut(rgb) { BBox(x, x, y, y) }
+                if (x < bb.minX) bb.minX = x
+                if (x > bb.maxX) bb.maxX = x
+                if (y < bb.minY) bb.minY = y
+                if (y > bb.maxY) bb.maxY = y
             }
         }
 
-        return spriteColors.map { color ->
+        return bboxByColor.map { (color, bb) ->
             val r = (color shr 16) and 0xFF
             val g = (color shr 8)  and 0xFF
             val b =  color         and 0xFF
 
             val spriteId = SpriteId(spriteBagId = bagId, red = r, green = g, blue = b)
+            val cropW = bb.maxX - bb.minX + 1
+            val cropH = bb.maxY - bb.minY + 1
 
-            // Determine bounding box for this color in the mask
-            var minX = width;  var maxX = 0
-            var minY = height; var maxY = 0
-            for (y in 0 until height) {
-                for (x in 0 until width) {
-                    if (maskImage.getRGB(x, y) and 0x00FFFFFF == color) {
-                        if (x < minX) minX = x; if (x > maxX) maxX = x
-                        if (y < minY) minY = y; if (y > maxY) maxY = y
-                    }
-                }
-            }
-
-            val cropW = maxX - minX + 1
-            val cropH = maxY - minY + 1
-
-            val croppedFront = cropAndMask(frontImage, maskImage, color, minX, minY, cropW, cropH)
-            val croppedBack  = cropAndMask(backImage,  maskImage, color, minX, minY, cropW, cropH)
+            val croppedFront = cropAndMask(frontPixels, maskPixels, width, color, bb.minX, bb.minY, cropW, cropH)
+            val croppedBack  = cropAndMask(backPixels,  maskPixels, width, color, bb.minX, bb.minY, cropW, cropH)
 
             Sprite(
                 id = spriteId,
@@ -98,38 +92,29 @@ object SpriteLoader {
         }
     }
 
-    /**
-     * Crops [source] to the given bounding box and makes every pixel transparent
-     * where the [maskImage] pixel does not match [spriteColor] (including black bg).
-     */
     private fun cropAndMask(
-        source: BufferedImage,
-        maskImage: BufferedImage,
+        sourcePixels: IntArray,
+        maskPixels: IntArray,
+        imageWidth: Int,
         spriteColor: Int,
         startX: Int,
         startY: Int,
         cropW: Int,
         cropH: Int,
     ): BufferedImage {
-        val result = BufferedImage(cropW, cropH, BufferedImage.TYPE_INT_ARGB)
-
+        val resultPixels = IntArray(cropW * cropH)
         for (dy in 0 until cropH) {
             for (dx in 0 until cropW) {
-                val srcX = startX + dx
-                val srcY = startY + dy
-                val maskRgb = maskImage.getRGB(srcX, srcY) and 0x00FFFFFF
-
-                if (maskRgb == spriteColor) {
-                    // Keep the source pixel fully opaque
-                    val pixel = source.getRGB(srcX, srcY) or (0xFF shl 24)
-                    result.setRGB(dx, dy, pixel)
+                val idx = (startY + dy) * imageWidth + (startX + dx)
+                resultPixels[dy * cropW + dx] = if (maskPixels[idx] and 0x00FFFFFF == spriteColor) {
+                    sourcePixels[idx] or (0xFF shl 24)
                 } else {
-                    // Transparent – background or belongs to another sprite
-                    result.setRGB(dx, dy, 0x00000000)
+                    0x00000000
                 }
             }
         }
-
+        val result = BufferedImage(cropW, cropH, BufferedImage.TYPE_INT_ARGB)
+        result.setRGB(0, 0, cropW, cropH, resultPixels, 0, cropW)
         return result
     }
 
