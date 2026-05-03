@@ -17,6 +17,7 @@ import net.rafkos.ojkipojki.client.view.state.PointerAnimator
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.client.view.state.TokenAnimator
 import net.rafkos.ojkipojki.client.view.state.ViewportState
+import net.rafkos.ojkipojki.shared.AppIcon
 import net.rafkos.ojkipojki.shared.locale.LocaleService
 import java.awt.BorderLayout
 import java.awt.Dimension
@@ -51,6 +52,7 @@ class MainWindow(
 
     init {
         defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
+        AppIcon.image?.let { iconImage = it }
         setSize(1200, 800)
 
         val tokenRenderer = TokenRenderer()

@@ -1,5 +1,6 @@
 package net.rafkos.ojkipojki.launcher
 
+import net.rafkos.ojkipojki.shared.AppIcon
 import net.rafkos.ojkipojki.shared.locale.LocaleService
 import java.awt.Color
 import java.awt.Font
@@ -21,6 +22,7 @@ class ServerConsoleWindow : JFrame(LocaleService.get("server.console.title")) {
 
     init {
         defaultCloseOperation = EXIT_ON_CLOSE
+        AppIcon.image?.let { iconImage = it }
         setSize(700, 450)
         add(JScrollPane(textArea).apply {
             border = BorderFactory.createEmptyBorder()

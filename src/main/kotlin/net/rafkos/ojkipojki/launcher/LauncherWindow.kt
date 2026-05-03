@@ -3,6 +3,7 @@ package net.rafkos.ojkipojki.launcher
 import net.rafkos.ojkipojki.client.ClientRunner
 import net.rafkos.ojkipojki.server.ServerRunner
 import net.rafkos.ojkipojki.server.application.GamePersistence
+import net.rafkos.ojkipojki.shared.AppIcon
 import net.rafkos.ojkipojki.shared.locale.LocaleService
 import java.awt.Dimension
 import java.awt.Font
@@ -19,6 +20,7 @@ import javax.swing.*
 class LauncherWindow : JFrame(LocaleService.get("launcher.title")) {
     init {
         defaultCloseOperation = EXIT_ON_CLOSE
+        AppIcon.image?.let { iconImage = it }
 
         val root = JPanel()
         root.layout = BoxLayout(root, BoxLayout.Y_AXIS)
