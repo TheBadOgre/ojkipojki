@@ -80,7 +80,7 @@ class BoardPanel(
                 screenCy + screenR < 0 || screenCy - screenR > ph) continue
 
             val (sx, sy) = tokenAnimator.flipScale(token.id)
-            tokenRenderer.draw(g2, visual, sprite, selectionState.contains(token.id), token.locked, zoom, sx, sy)
+            tokenRenderer.draw(g2, visual, sprite, selectionState.contains(token.id), token.locked, sx, sy)
         }
 
         for (pointer in lastPointers) {

@@ -130,7 +130,7 @@ class SpriteBagListPanel(
         arrow.cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         arrow.border = BorderFactory.createEmptyBorder(0, 0, 0, 2)
         arrow.addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(e: MouseEvent) {
+            override fun mousePressed(e: MouseEvent) {
                 if (bag.id.id in expandedBags) expandedBags.remove(bag.id.id) else expandedBags.add(bag.id.id)
                 rebuild()
             }

@@ -132,9 +132,7 @@ class MainWindow(
             PanBinding(KeyEvent.VK_LEFT,   1,  0),
             PanBinding(KeyEvent.VK_DOWN,   0, -1),
             PanBinding(KeyEvent.VK_UP,     0,  1),
-            PanBinding(KeyEvent.VK_D,     -1,  0),
             PanBinding(KeyEvent.VK_A,      1,  0),
-            PanBinding(KeyEvent.VK_S,      0, -1),
             PanBinding(KeyEvent.VK_W,      0,  1),
         )
 
@@ -170,13 +168,17 @@ class MainWindow(
         bind(KeyStroke.getKeyStroke(KeyEvent.VK_A,             ctrl),         "selectAll")   { actions.selectAll() }
         bind(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE,        0),            "deselectAll") { actions.deselectAll() }
         bind(KeyStroke.getKeyStroke(KeyEvent.VK_R,             0),            "rotate60")    { actions.rotate60() }
-        bind(KeyStroke.getKeyStroke(KeyEvent.VK_OPEN_BRACKET,  ctrl),         "indexDown")   { actions.indexDown() }
-        bind(KeyStroke.getKeyStroke(KeyEvent.VK_CLOSE_BRACKET, ctrl),         "indexUp")     { actions.indexUp() }
-        bind(KeyStroke.getKeyStroke(KeyEvent.VK_OPEN_BRACKET,  ctrl or shift),"bringToBack") { actions.bringToBack() }
-        bind(KeyStroke.getKeyStroke(KeyEvent.VK_CLOSE_BRACKET, ctrl or shift),"bringToFront"){ actions.bringToFront() }
-        bind(KeyStroke.getKeyStroke(KeyEvent.VK_F5,            0),            "refreshBags") { actions.refreshBags() }
-        bind(KeyStroke.getKeyStroke(KeyEvent.VK_F,             0),            "flip")        { actions.flip() }
-        bind(KeyStroke.getKeyStroke(KeyEvent.VK_G,             0),            "arrangeGrid") { actions.arrangeGrid() }
-        bind(KeyStroke.getKeyStroke(KeyEvent.VK_L,             0),            "toggleLock")  { actions.toggleLock() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_D,              0),            "bringToBack") { actions.bringToBack() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_D,              ctrl),         "indexDown")   { actions.indexDown() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_F,              ctrl),         "indexUp")     { actions.indexUp() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_F,              0),            "bringToFront"){ actions.bringToFront() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_TAB,            0),            "flip")        { actions.flip() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_X,              0),            "shuffle")     { actions.shuffle() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_S,              0),            "stack")       { actions.stack() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_H,              0),            "spreadH")     { actions.spreadHorizontal() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_V,              0),            "spreadV")     { actions.spreadVertical() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_F5,             0),            "refreshBags") { actions.refreshBags() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_G,              0),            "arrangeGrid") { actions.arrangeGrid() }
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_L,              0),            "toggleLock")  { actions.toggleLock() }
     }
 }

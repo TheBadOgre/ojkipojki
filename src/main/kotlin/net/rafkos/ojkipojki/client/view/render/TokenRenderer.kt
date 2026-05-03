@@ -10,8 +10,10 @@ import java.awt.geom.AffineTransform
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 class TokenRenderer {
     companion object {
@@ -94,7 +96,7 @@ class TokenRenderer {
         return composite
     }
 
-    fun draw(g2: Graphics2D, token: Token, sprite: Sprite, selected: Boolean, locked: Boolean, zoom: Double,
+    fun draw(g2: Graphics2D, token: Token, sprite: Sprite, selected: Boolean, locked: Boolean,
              scaleX: Double = 1.0, scaleY: Double = 1.0) {
         if (scaleX < 0.01 || scaleY < 0.01) return
         val (front, _) = getImages(sprite)
@@ -116,7 +118,11 @@ class TokenRenderer {
 
         val prevColor  = g2.color
         val prevStroke = g2.stroke
-        val pw = (1.0 / zoom).toFloat()
+        // Derive pixel width from the actual combined transform so it stays 1px on screen
+        // regardless of viewport zoom, token flip scale, or HiDPI base scale.
+        val currentAt = g2.transform
+        val det = abs(currentAt.scaleX * currentAt.scaleY - currentAt.shearX * currentAt.shearY)
+        val pw = (1.0 / sqrt(det)).toFloat()
 
         if (selected) {
             g2.color  = Color(80, 160, 255)
