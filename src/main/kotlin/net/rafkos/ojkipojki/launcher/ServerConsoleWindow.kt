@@ -20,7 +20,7 @@ class ServerConsoleWindow : JFrame(LocaleService.get("server.console.title")) {
     }
 
     init {
-        defaultCloseOperation = DISPOSE_ON_CLOSE
+        defaultCloseOperation = EXIT_ON_CLOSE
         setSize(700, 450)
         add(JScrollPane(textArea).apply {
             border = BorderFactory.createEmptyBorder()

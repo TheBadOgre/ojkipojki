@@ -177,6 +177,9 @@ All three images cached per `SpriteId`. Shadow/edge computed once from front ima
 - `pruneAgainst(tokens)` called on every token update event to drop deleted token IDs.
 - Selection outline: 1px blue (#50A0FF) dashed stroke, width corrected to `1/zoom` to stay 1px on screen.
 
+### Loggin
+Logging uses log4j. Every log message should be produced via LogManager, e.g. `private val log = LogManager.getLogger(GameLoader::class.java)` or from companion objects in case of classes.
+
 ### Hit testing (`BoardMouseController.findTokenAt`)
 Sort tokens `sortedBy { index }.reversed()` — same order as rendering but reversed, so topmost visible token is checked first.
 

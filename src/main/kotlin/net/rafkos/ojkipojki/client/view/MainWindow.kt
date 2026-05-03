@@ -95,10 +95,10 @@ class MainWindow(
 
         val splitPane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, boardPanel, sidebarContainer)
         splitPane.resizeWeight = 1.0
-        splitPane.dividerLocation = 1200 - 220
+        splitPane.dividerLocation = 1200 - 286
 
         var sidebarExpanded = true
-        var lastDividerLocation = 1200 - 220
+        var lastDividerLocation = 1200 - 286
 
         toggleBtn.addActionListener {
             if (sidebarExpanded) {

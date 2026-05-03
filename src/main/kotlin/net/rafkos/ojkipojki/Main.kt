@@ -4,7 +4,11 @@ import net.rafkos.ojkipojki.launcher.LauncherWindow
 import javax.swing.SwingUtilities
 import javax.swing.UIManager
 
-fun main() {
-    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
-    SwingUtilities.invokeLater { LauncherWindow().isVisible = true }
+fun main(args: Array<String>) {
+    if ("--server" in args) {
+        CliRunner.run(args)
+    } else {
+        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
+        SwingUtilities.invokeLater { LauncherWindow().isVisible = true }
+    }
 }

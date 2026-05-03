@@ -56,7 +56,7 @@ class SpriteBagListPanel(
     private val sizeSlider = JSlider(24, 128, 64)
 
     init {
-        preferredSize = Dimension(220, 0)
+        preferredSize = Dimension(286, 0)
 
         val scroll = JScrollPane(contentPanel)
         scroll.horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER

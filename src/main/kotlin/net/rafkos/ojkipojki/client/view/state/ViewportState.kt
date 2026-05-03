@@ -5,7 +5,7 @@ import java.awt.geom.AffineTransform
 import java.awt.geom.Point2D
 
 class ViewportState {
-    var zoom: Double = 1.0
+    var zoom: Double = 1.0 / 3.0
     var offsetX: Double = 0.0
     var offsetY: Double = 0.0
 
