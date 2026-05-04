@@ -1,5 +1,6 @@
 package net.rafkos.ojkipojki.server.application
 
+import net.rafkos.ojkipojki.shared.AppDirs
 import net.rafkos.ojkipojki.shared.domain.SpriteBag
 import net.rafkos.ojkipojki.shared.domain.Token
 import java.io.*
@@ -15,7 +16,7 @@ data class GameSave(
 }
 
 object GamePersistence {
-    val savesDir = File("saves")
+    val savesDir = AppDirs.resolveData("saves")
     val autoSaveFile get() = File(savesDir, "autosave.sav")
 
     fun save(repository: ModelRepository, file: File = autoSaveFile) {

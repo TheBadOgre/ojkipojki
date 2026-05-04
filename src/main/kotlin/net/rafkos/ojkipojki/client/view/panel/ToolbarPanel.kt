@@ -45,8 +45,6 @@ class ToolbarPanel(
              Icons.flip,    LocaleService.get("toolbar.flip"))                        { actions.flip() }
         cond({ actions.hasAtLeast2UnlockedSelected() },
              Icons.shuffle, LocaleService.get("toolbar.shuffle"))                     { actions.shuffle() }
-        cond({ actions.hasUnlockedSelected() },
-             Icons.delete,      LocaleService.get("toolbar.delete"))                  { actions.delete() }
         addSeparator()
 
         // Layout
@@ -65,8 +63,10 @@ class ToolbarPanel(
         add(lockBtn)
         addSeparator()
 
-        // System
+        // Sprites presence
         always(Icons.refreshBags, LocaleService.get("toolbar.refreshBags"))           { actions.refreshBags() }
+        cond({ actions.hasUnlockedSelected() },
+            Icons.delete,      LocaleService.get("toolbar.delete"))                  { actions.delete() }
 
         selectionState.addListener { refreshButtons() }
         refreshButtons()

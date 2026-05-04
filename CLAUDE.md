@@ -64,6 +64,13 @@ Domain classes and protocol interfaces used by both sides.
 
 **Protocol abstractions:** `Handler<A>`, `Dispatcher<A>`, `Receiver`, `Transmitter` — generic interfaces for the command/event pipeline.
 
+**`AppDirs`** — resolves filesystem paths for assets and user data. Uses `app.dir` system property (set by jpackage launcher via `$APPDIR`); falls back to CWD for local dev.
+- `root` / `resolve(path)` — read-only assets (sprites). Points to `$APPDIR` in packaged builds (same directory as JARs).
+- `dataRoot` / `resolveData(path)` — user-writable data (saves). Points to a platform-specific user directory when packaged, or CWD for local dev:
+  - Linux: `~/.local/share/ojkipojki/`
+  - macOS: `~/Library/Application Support/ojkipojki/`
+  - Windows: `%APPDATA%\ojkipojki\`
+
 **`LocaleService`** — loads `/locale/locale_en.properties` from classpath, then overlays the system language file if different from `en`. `get(key)` / `get(key, vararg args)` for parameterised strings. Loaded once at startup. Every text visible in UI (not console) should be available in all available languages.
 
 ## Commands and Events
@@ -177,7 +184,7 @@ All three images cached per `SpriteId`. Shadow/edge computed once from front ima
 - `pruneAgainst(tokens)` called on every token update event to drop deleted token IDs.
 - Selection outline: 1px blue (#50A0FF) dashed stroke, width corrected to `1/zoom` to stay 1px on screen.
 
-### Loggin
+### Logging
 Logging uses log4j. Every log message should be produced via LogManager, e.g. `private val log = LogManager.getLogger(GameLoader::class.java)` or from companion objects in case of classes.
 
 ### Hit testing (`BoardMouseController.findTokenAt`)
@@ -210,3 +217,41 @@ Listens to mouse moves on `BoardPanel`. Converts screen coords to world via `Vie
 
 ### Sprite loading
 `SpriteLoader` and `SpriteBagDirectoryLoader` are both in `client/application/`, package `net.rafkos.ojkipojki.client.application`.
+
+## Build and run
+
+### Local run (`run` task)
+```
+./gradlew run
+```
+- Copies `./local_resources/` → `./last_run_tmp/` (preserves any runtime-generated files like saves).
+- Launches the JVM with `./last_run_tmp/` as working directory.
+- `./last_run_tmp/` persists after exit — intentional, holds runtime output (e.g. `last_game.sav`).
+- `./sprites/` subdirs must exist under `./last_run_tmp/` for sprite loading to work (copied from `local_resources/sprites/`).
+
+### Release (`release_all` task)
+```
+./gradlew release_all
+```
+- Runs `clean` → `build` (compile + tests) → jpackage → `./output/`.
+- **jpackage is OS-native — it can only build for the host OS.** Run on each OS separately (or via CI) to get all platform artifacts:
+  - Windows → `./output/<name>_<version>_windows_x64.zip` (app-image zip)
+  - Linux → `./output/<name>_<version>_linux_x64.deb` + `.rpm`
+  - macOS → `./output/<name>_<version>_macos_x64.dmg`
+- Windows exe icon set from `./local_resources/icon.ico`. Linux/macOS icons require `.png`/`.icns` — add to `local_resources/` and wire in `build.gradle.kts` if needed.
+- Re-running overwrites existing artifacts in `./output/`.
+
+### Packaged directory layout
+
+jpackage places files differently per platform. `$APPDIR` (set as `app.dir` system property) always points to the directory containing the JARs:
+
+| Platform | JARs (`$APPDIR`) | Sprites (bundled with JARs) | Saves (user data, runtime) |
+|---|---|---|---|
+| Windows (zip) | `<app>/app/` | `<app>/app/sprites/` | `%APPDATA%\ojkipojki\saves\` |
+| Linux (deb) | `/opt/ojkipojki/lib/app/` | `/opt/ojkipojki/lib/app/sprites/` | `~/.local/share/ojkipojki/saves/` |
+| macOS (dmg) | `<App>.app/Contents/app/` | `<App>.app/Contents/app/sprites/` | `~/Library/Application Support/ojkipojki/saves/` |
+| Local dev | CWD (`last_run_tmp/`) | `last_run_tmp/sprites/` | `last_run_tmp/saves/` |
+
+`sprites/` is staged into `jpackageInputDir` (alongside JARs) so it consistently lands at `$APPDIR/sprites/` on all platforms. Other `local_resources/` items (icon, readmes) go via `--app-content` and land one level above `$APPDIR` — the app does not need to find them at runtime.
+
+`saves/` is never bundled; it is created at runtime by `GamePersistence` in the platform user-data directory (via `AppDirs.resolveData`). The save directory is created on first save (`savesDir.mkdirs()` in `GamePersistence.save`).
