@@ -53,7 +53,7 @@ Domain classes and protocol interfaces used by both sides.
 
 **Domain objects** (immutable, used as-is on client):
 - `SpriteBag(id, groupName, sprites)` — a named collection of sprites; `groupName` is the subdirectory name.
-- `Sprite(id, frontImageBytes, backImageBytes)` — one game piece, front and back images as PNG bytes.
+- `Sprite(id, frontImageBytes, backImageBytes)` — one game piece, front and back images as WebP bytes.
 - `Token(id, spriteId, position, rotation, index, flipped, locked)` — a placed instance of a sprite on the board.
 - `Pointer(x, y, red, green, blue)` — another client's cursor position, identified by its assigned RGB color.
 
@@ -240,7 +240,7 @@ Adding a new version: implement `GameDataV2`, `GameDataV2Serializer`, `GameDataV
 
 **Saves tokens only — sprite bags are NOT saved.**
 
-Rationale: sprite PNG bytes are already compressed; GZIP produces no meaningful reduction. Sprites are always re-uploaded by clients on connect (`UploadSpriteBagsCommand` sent by `ApplicationHandler.onSessionReady`), so storing them is pure duplication. Saves are tiny (a few KB regardless of sprite count).
+Rationale: sprite WebP bytes are already compressed; GZIP produces no meaningful reduction. Sprites are always re-uploaded by clients on connect (`UploadSpriteBagsCommand` sent by `ApplicationHandler.onSessionReady`), so storing them is pure duplication. Saves are tiny (a few KB regardless of sprite count).
 
 `GameData.spriteBags` is always `emptyList()` after a load. `GameLoader` tolerates this — the empty loop is a no-op.
 

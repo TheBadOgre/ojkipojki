@@ -1,5 +1,6 @@
 package net.rafkos.ojkipojki.client.view.action
 
+import kotlinx.coroutines.runBlocking
 import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.protocol.command.CommandTransmitter
 import net.rafkos.ojkipojki.client.application.SpriteBagDirectoryLoader
@@ -87,7 +88,7 @@ class BoardActions(
     }
 
     fun refreshBags() {
-        val bags = SpriteBagDirectoryLoader.loadAll()
+        val bags = runBlocking { SpriteBagDirectoryLoader.loadAll() }
         transmitter.transmit(UploadSpriteBagsCommand(bags))
     }
 

@@ -1,5 +1,6 @@
 package net.rafkos.ojkipojki.client.protocol
 
+import kotlinx.coroutines.runBlocking
 import net.rafkos.ojkipojki.client.ClientContext
 import net.rafkos.ojkipojki.client.protocol.command.CommandTransmitter
 import net.rafkos.ojkipojki.client.view.InitializationProgressDialog
@@ -87,7 +88,7 @@ class ApplicationHandler(
             window.isVisible = true
         }
 
-        val bags = SpriteBagDirectoryLoader.loadAll()
+        val bags = runBlocking { SpriteBagDirectoryLoader.loadAll() }
         if (bags.isNotEmpty()) transmitter.transmit(UploadSpriteBagsCommand(bags))
     }
 
