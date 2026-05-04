@@ -48,3 +48,5 @@ bin/
 last_game.sav
 saves/
 .claude/
+.last_run_tmp/
+output/
