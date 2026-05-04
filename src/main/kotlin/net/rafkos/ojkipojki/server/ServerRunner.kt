@@ -3,7 +3,7 @@ package net.rafkos.ojkipojki.server
 import net.rafkos.ojkipojki.server.application.AutoSaveService
 import net.rafkos.ojkipojki.server.application.ClientColorRegistry
 import net.rafkos.ojkipojki.server.application.GameLoader
-import net.rafkos.ojkipojki.server.application.GamePersistence
+import net.rafkos.ojkipojki.server.application.persistence.GamePersistence
 import net.rafkos.ojkipojki.server.application.ModelRepository
 import net.rafkos.ojkipojki.server.application.PointerRepository
 import net.rafkos.ojkipojki.server.application.TokenSyncHeartbeatService

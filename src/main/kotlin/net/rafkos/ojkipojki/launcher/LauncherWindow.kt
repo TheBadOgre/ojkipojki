@@ -2,7 +2,7 @@ package net.rafkos.ojkipojki.launcher
 
 import net.rafkos.ojkipojki.client.ClientRunner
 import net.rafkos.ojkipojki.server.ServerRunner
-import net.rafkos.ojkipojki.server.application.GamePersistence
+import net.rafkos.ojkipojki.server.application.persistence.GamePersistence
 import net.rafkos.ojkipojki.shared.AppIcon
 import net.rafkos.ojkipojki.shared.locale.LocaleService
 import java.awt.Dimension

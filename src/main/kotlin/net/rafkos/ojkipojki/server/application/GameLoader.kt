@@ -1,5 +1,6 @@
 package net.rafkos.ojkipojki.server.application
 
+import net.rafkos.ojkipojki.server.application.persistence.GamePersistence
 import net.rafkos.ojkipojki.server.model.SpriteBagModel
 import net.rafkos.ojkipojki.server.model.TokenModel
 import org.apache.logging.log4j.LogManager

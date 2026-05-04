@@ -73,13 +73,13 @@ val stageJpackageInput by tasks.registering(Copy::class) {
     dependsOn(tasks.named("build"))
     from(configurations.named("runtimeClasspath"))
     from(tasks.named<Jar>("jar").map { it.outputs.files })
-    from(localResourcesDir.asFile) { include("sprites/**") }
     into(jpackageInputDir)
 }
 
 val stageJpackageContent by tasks.registering(Copy::class) {
     group = "release"
     from(localResourcesDir) { exclude("sprites/**") }
+    from(localResourcesDir.asFile) { include("sprites/**") }
     into(jpackageContentDir)
 }
 

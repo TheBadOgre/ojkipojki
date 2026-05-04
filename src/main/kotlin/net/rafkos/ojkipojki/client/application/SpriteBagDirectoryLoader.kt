@@ -5,7 +5,7 @@ import net.rafkos.ojkipojki.shared.domain.SpriteBag
 import java.io.File
 
 object SpriteBagDirectoryLoader {
-    fun loadAll(rootDir: File = AppDirs.resolve("sprites")): List<SpriteBag> {
+    fun loadAll(rootDir: File = AppDirs.spritesRoot): List<SpriteBag> {
         val subdirs = rootDir.listFiles { f -> f.isDirectory } ?: return emptyList()
         return subdirs.flatMap { SpriteLoader.loadSprites(it) }
     }

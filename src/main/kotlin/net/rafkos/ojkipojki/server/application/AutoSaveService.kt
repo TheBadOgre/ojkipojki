@@ -1,5 +1,6 @@
 package net.rafkos.ojkipojki.server.application
 
+import net.rafkos.ojkipojki.server.application.persistence.GamePersistence
 import org.apache.logging.log4j.LogManager
 import java.util.Timer
 import java.util.TimerTask

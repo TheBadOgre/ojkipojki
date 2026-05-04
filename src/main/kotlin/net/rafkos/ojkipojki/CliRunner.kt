@@ -1,7 +1,7 @@
 package net.rafkos.ojkipojki
 
 import net.rafkos.ojkipojki.server.ServerRunner
-import net.rafkos.ojkipojki.server.application.GamePersistence
+import net.rafkos.ojkipojki.server.application.persistence.GamePersistence
 import org.apache.logging.log4j.LogManager
 import java.io.File
 

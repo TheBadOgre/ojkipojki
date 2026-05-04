@@ -30,7 +30,7 @@ Client                          Server
 - **`ClientSessionManager`** / **`ConnectionManager`** — manage TCP connections and per-client sessions.
 - **`AutoSaveService`** — saves `ModelRepository` to `last_game.sav` every 5 minutes via a daemon `Timer`.
 - **`TokenSyncHeartbeatService`** — broadcasts a full `TokensSyncEvent` to all clients every 5 seconds.
-- **`GameLoader`** / **`GamePersistence`** — load/save game state using Java object serialization. `GameLoader.tryLoad` returns `false` if the save file is corrupted (repo is cleared; caller surfaces the error).
+- **`GameLoader`** / **`GamePersistence`** — load/save game state. `GameLoader.tryLoad` returns `false` if the save file is corrupted (repo is cleared; caller surfaces the error). See **Save file format** section below.
 - **`ClientColorRegistry`** — assigns a distinct RGB color from a pool of 32 to each connected client; used for pointer rendering.
 - **`PointerRepository`** — in-memory `ConcurrentHashMap<clientId, Pointer>` for current pointer positions; `findAllExcept(clientId)` is used for broadcasting.
 - **`CommandContext`** — `ThreadLocal<String?>` holding the client ID of the command currently being dispatched. Set per-task by the executor before calling `dispatch`.
@@ -65,11 +65,12 @@ Domain classes and protocol interfaces used by both sides.
 **Protocol abstractions:** `Handler<A>`, `Dispatcher<A>`, `Receiver`, `Transmitter` — generic interfaces for the command/event pipeline.
 
 **`AppDirs`** — resolves filesystem paths for assets and user data. Uses `app.dir` system property (set by jpackage launcher via `$APPDIR`); falls back to CWD for local dev.
-- `root` / `resolve(path)` — read-only assets (sprites). Points to `$APPDIR` in packaged builds (same directory as JARs).
-- `dataRoot` / `resolveData(path)` — user-writable data (saves). Points to a platform-specific user directory when packaged, or CWD for local dev:
+- `root` / `resolve(path)` — points to `$APPDIR` (JAR directory) in packaged builds, CWD for local dev.
+- `spritesRoot` — sprite assets directory. Packaged: one level above `$APPDIR` (`<app>/sprites/`). Local dev: `./sprites/`.
+- `dataRoot` / `resolveData(path)` — user-writable data (saves). Points to a platform-specific user directory when packaged (except Windows), or CWD for local dev:
   - Linux: `~/.local/share/ojkipojki/`
   - macOS: `~/Library/Application Support/ojkipojki/`
-  - Windows: `%APPDATA%\ojkipojki\`
+  - Windows: one level above `$APPDIR` (`<app>/`) — so `resolveData("saves")` = `<app>/saves/`
 
 **`LocaleService`** — loads `/locale/locale_en.properties` from classpath, then overlays the system language file if different from `en`. `get(key)` / `get(key, vararg args)` for parameterised strings. Loaded once at startup. Every text visible in UI (not console) should be available in all available languages.
 
@@ -118,8 +119,9 @@ net.rafkos.ojkipojki
 │   ├── ServerRunner.kt  # Wires up server, starts services, registers shutdown hook
 │   ├── model/           # Mutable model classes (apply/toState): SpriteBagModel, SpriteModel, TokenModel, sub-models
 │   ├── application/     # ModelRepository, PointerRepository, ClientColorRegistry,
-│   │                    # GameLoader, GamePersistence, AutoSaveService, TokenSyncHeartbeatService,
-│   │                    # CommandContext
+│   │                    # GameLoader, AutoSaveService, TokenSyncHeartbeatService, CommandContext
+│   └── application/persistence/  # GamePersistence, GameData, GameSave, GameDataSerializer,
+│                                  # GameDataDeserializer, GameDataV1 (+ V1Serializer, V1Deserializer)
 │   └── protocol/
 │       ├── command/     # CommandDispatcher, CommandReceiver + handlers
 │       └── event/       # EventBroadcastService, EventTransmitter
@@ -218,6 +220,36 @@ Listens to mouse moves on `BoardPanel`. Converts screen coords to world via `Vie
 ### Sprite loading
 `SpriteLoader` and `SpriteBagDirectoryLoader` are both in `client/application/`, package `net.rafkos.ojkipojki.client.application`.
 
+## Save file format
+
+Save files live in `AppDirs.resolveData("saves")/`. Format: GZIP-wrapped Java `ObjectOutputStream` containing a `GameSave` implementor.
+
+### Versioning pattern (`persistence/`)
+
+| Class | Role |
+|---|---|
+| `GameSave` | Marker interface — every versioned save format implements it |
+| `GameDataSerializer<G>` | `serialize(repo): G` — converts live `ModelRepository` to a `GameSave` |
+| `GameDataDeserializer<G>` | `deserialize(gameSave): GameData` — converts a `GameSave` to the common `GameData` result |
+| `GameData` | Common output of load: `spriteBags + tokens` (domain objects) |
+| `GamePersistence` | Writes with the latest serializer; reads and dispatches by `when (is GameDataVN)` to the matching deserializer |
+
+Adding a new version: implement `GameDataV2`, `GameDataV2Serializer`, `GameDataV2Deserializer`, add a branch to the `when` in `GamePersistence.load`, update `GamePersistence.serializer` to `GameDataV2Serializer()`.
+
+### V1 format (`GameDataV1`)
+
+**Saves tokens only — sprite bags are NOT saved.**
+
+Rationale: sprite PNG bytes are already compressed; GZIP produces no meaningful reduction. Sprites are always re-uploaded by clients on connect (`UploadSpriteBagsCommand` sent by `ApplicationHandler.onSessionReady`), so storing them is pure duplication. Saves are tiny (a few KB regardless of sprite count).
+
+`GameData.spriteBags` is always `emptyList()` after a load. `GameLoader` tolerates this — the empty loop is a no-op.
+
+`SpriteId` is encoded as a string `"${bagId}:${r}:${g}:${b}"`. Decoding splits from the right (last 3 colon-segments = r, g, b; remainder = bag ID), so colons in bag names are safe.
+
+### Init dialog and sprite-less restarts
+
+After a server restart with no sprites in `ModelRepository`, `ClientSessionManager.onClientConnected` sends `SpriteBagsUpdatedEvent(emptyList)` followed by `GameInitializationEvent(DONE)`. The UI is locked by the init dialog throughout. The client immediately sends `UploadSpriteBagsCommand` on connect; `UploadSpriteBagsCommandHandler` sends `IN_PROGRESS` (re-locks dialog) then `DONE` (unlocks). The user never sees a broken-sprite state.
+
 ## Tests
 
 Run with `./gradlew test`. Tests live under `src/test/kotlin` mirroring the main source structure.
@@ -230,6 +262,7 @@ Run with `./gradlew test`. Tests live under `src/test/kotlin` mirroring the main
 - **Dispatchers** — `CommandDispatcher` and `EventDispatcher` are checked to have an entry for every known command/event type. A new command or event must be registered in the dispatcher or the test fails.
 - **Repositories** — `ModelRepository`, `PointerRepository`, `ClientColorRegistry`, `StateRepository` tested with real instances.
 - **Connection layer** — `ConnectionManager`, `ClientSessionManager`, `ServerConnection`, `ClientSession` tested with real loopback sockets.
+- **Persistence** — `GameDataV1Serializer`, `GameDataV1Deserializer`, and `GamePersistence` tested directly. `GamePersistenceTest` uses `@TempDir` — no dependency on `AppDirs`. Tests cover field preservation, SpriteId colon-in-bag-name encoding, GZIP magic bytes, and unknown-format error handling.
 
 ### Test infrastructure
 
@@ -278,13 +311,13 @@ Any new command, event, command handler, event handler, or protocol class **must
 
 jpackage places files differently per platform. `$APPDIR` (set as `app.dir` system property) always points to the directory containing the JARs:
 
-| Platform | JARs (`$APPDIR`) | Sprites (bundled with JARs) | Saves (user data, runtime) |
+| Platform | JARs (`$APPDIR`) | Sprites | Saves (user data, runtime) |
 |---|---|---|---|
-| Windows (zip) | `<app>/app/` | `<app>/app/sprites/` | `%APPDATA%\ojkipojki\saves\` |
-| Linux (deb) | `/opt/ojkipojki/lib/app/` | `/opt/ojkipojki/lib/app/sprites/` | `~/.local/share/ojkipojki/saves/` |
-| macOS (dmg) | `<App>.app/Contents/app/` | `<App>.app/Contents/app/sprites/` | `~/Library/Application Support/ojkipojki/saves/` |
+| Windows (zip) | `<app>/app/` | `<app>/sprites/` | `<app>/saves/` |
+| Linux (deb) | `/opt/ojkipojki/lib/app/` | `/opt/ojkipojki/sprites/` | `~/.local/share/ojkipojki/saves/` |
+| macOS (dmg) | `<App>.app/Contents/app/` | `<App>.app/Contents/sprites/` | `~/Library/Application Support/ojkipojki/saves/` |
 | Local dev | CWD (`last_run_tmp/`) | `last_run_tmp/sprites/` | `last_run_tmp/saves/` |
 
-`sprites/` is staged into `jpackageInputDir` (alongside JARs) so it consistently lands at `$APPDIR/sprites/` on all platforms. Other `local_resources/` items (icon, readmes) go via `--app-content` and land one level above `$APPDIR` — the app does not need to find them at runtime.
+`sprites/` is staged into `jpackageContentDir` and passed via `--app-content`, landing one level above `$APPDIR` (`<app>/sprites/`) on all platforms. Other `local_resources/` items (icon, readmes) also go via `--app-content`.
 
-`saves/` is never bundled; it is created at runtime by `GamePersistence` in the platform user-data directory (via `AppDirs.resolveData`). The save directory is created on first save (`savesDir.mkdirs()` in `GamePersistence.save`).
+`saves/` is never bundled; it is created at runtime by `GamePersistence` (via `AppDirs.resolveData`). On Windows it lands at `<app>/saves/` (writable app-image directory); on Linux/macOS it stays in the platform user-data directory. The save directory is created on first save (`savesDir.mkdirs()` in `GamePersistence.save`).

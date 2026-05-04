@@ -3,14 +3,19 @@ package net.rafkos.ojkipojki.shared
 import java.io.File
 
 object AppDirs {
-    val root: File = File(System.getProperty("app.dir", "."))
+    private val appDir: String? = System.getProperty("app.dir")
+    private val installRoot: File? = if (appDir != null) File(appDir).parentFile else null
 
-    val dataRoot: File = if (System.getProperty("app.dir") != null) {
+    val root: File = File(appDir ?: ".")
+
+    val spritesRoot: File = installRoot?.resolve("sprites") ?: root.resolve("sprites")
+
+    val dataRoot: File = if (installRoot != null) {
         val os = System.getProperty("os.name", "").lowercase()
         val home = File(System.getProperty("user.home", "."))
         when {
             os.contains("mac") -> File(home, "Library/Application Support/ojkipojki")
-            os.contains("win") -> File(System.getenv("APPDATA") ?: "$home/AppData/Roaming", "ojkipojki")
+            os.contains("win") -> installRoot
             else               -> File(home, ".local/share/ojkipojki")
         }
     } else {
