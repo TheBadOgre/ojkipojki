@@ -218,6 +218,39 @@ Listens to mouse moves on `BoardPanel`. Converts screen coords to world via `Vie
 ### Sprite loading
 `SpriteLoader` and `SpriteBagDirectoryLoader` are both in `client/application/`, package `net.rafkos.ojkipojki.client.application`.
 
+## Tests
+
+Run with `./gradlew test`. Tests live under `src/test/kotlin` mirroring the main source structure.
+
+### What is tested
+
+- **Commands and events** — Java serialization round-trips for every `Command` and `Event` subtype. A new command or event requires a serialization test and a `serialVersionUID` companion declaration.
+- **Command handlers** — each handler is tested against a real `ModelRepository` / `PointerRepository` with a mocked `EventBroadcastService`. Tests assert (a) repository state after the call and (b) the exact event type and payload broadcast. Handlers that touch `CommandContext.clientId` must set it in the test and reset it in `@AfterEach`.
+- **Event handlers** — each handler is tested against a real `StateRepository`. Tests assert (a) repository state after the call and (b) callbacks (`onTokensUpdated`, `onSpriteBagsUpdated`, etc.) invoked exactly once.
+- **Dispatchers** — `CommandDispatcher` and `EventDispatcher` are checked to have an entry for every known command/event type. A new command or event must be registered in the dispatcher or the test fails.
+- **Repositories** — `ModelRepository`, `PointerRepository`, `ClientColorRegistry`, `StateRepository` tested with real instances.
+- **Connection layer** — `ConnectionManager`, `ClientSessionManager`, `ServerConnection`, `ClientSession` tested with real loopback sockets.
+
+### Test infrastructure
+
+| Fixture | Purpose |
+|---|---|
+| `ServerContextFixture` (`server/support/`) | Installs fresh real repositories + mocked `EventBroadcastService` / `CommandDispatcher` into `ServerContext` before each test. |
+| `ClientContextFixture` (`client/support/`) | Installs fresh `StateRepository` + `EventDispatcher`, nulls all callbacks into `ClientContext`. |
+| `socketPair()` (`support/SocketPair.kt`) | Returns a connected `(clientSocket, acceptedSocket)` pair over loopback. Required for any test that constructs `Transmitter`/`Receiver`. When using `socketPair()`, create `ObjectOutputStream` on the peer socket **before** calling code that constructs `ObjectInputStream` on the other side — otherwise the constructor blocks. |
+| `await()` (`support/SocketPair.kt`) | Polls a condition with a timeout; use instead of `Thread.sleep` for cross-thread assertions. |
+
+### Key gotchas
+
+- `ServerContext` and `ClientContext` are JVM-wide singletons. Always reinstall the fixture in `@BeforeEach`; reset `CommandContext.clientId = null` in `@AfterEach` for handler tests.
+- `EventBroadcastService` is mocked (not the real one). Verify calls with `argumentCaptor<Event>()` against `broadcast(event)` (single-arg, broadcasts to all) vs `broadcast(event, clientId)` (two-arg, unicast) — they are separate overloads.
+- `broadcastCustom` takes a nullable `excludeClientId: String?` as first arg. Use `anyOrNull()` not `any()` when the call may pass `null`.
+- Tests run sequentially (Gradle default). Do not enable parallel test execution — singletons are not isolated across concurrent test classes.
+
+### Rule: add tests for new logic
+
+Any new command, event, command handler, event handler, or protocol class **must** have a corresponding test. Dispatchers must be updated to include the new type or the coverage test fails. This is enforced by `./gradlew test` which runs before release via `release_all`.
+
 ## Build and run
 
 ### Local run (`run` task)

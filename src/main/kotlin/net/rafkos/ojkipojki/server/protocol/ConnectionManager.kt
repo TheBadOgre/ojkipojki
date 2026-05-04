@@ -7,6 +7,7 @@ import java.net.Socket
 
 class ConnectionManager(serverPort: Int) {
     private val serverSocket: ServerSocket = ServerSocket(serverPort)
+    internal val port: Int get() = serverSocket.localPort
     @Volatile private var running = true
 
     fun startAcceptingConnections(listener: ClientConnectionListener) {

@@ -21,9 +21,14 @@ object GamePersistence {
 
     fun save(repository: ModelRepository, file: File = autoSaveFile) {
         savesDir.mkdirs()
+        val tokens = repository.findAllTokens().map { it.toState() }
+        val tokenSpriteIds = tokens.map { it.spriteId }.toSet()
+        // Save only those sprite bags which are actually used
+        val usedSpriteBags = repository.findAllSpriteBags().filter { bag ->
+            bag.sprites.any { it.id in tokenSpriteIds } }.map { it.toState() }
         val save = GameSave(
-            spriteBags = repository.findAllSpriteBags().map { it.toState() },
-            tokens     = repository.findAllTokens().map { it.toState() },
+            spriteBags = usedSpriteBags,
+            tokens     = tokens,
         )
         ObjectOutputStream(BufferedOutputStream(FileOutputStream(file))).use { it.writeObject(save) }
     }
