@@ -45,7 +45,7 @@ Models (`server/model/`) are mutable classes with `apply(domain)` to absorb doma
 - **`SpriteLoader`** — loads sprite bags from a directory of PNGs (see below).
 - **`SpriteBagDirectoryLoader`** — scans `sprites/` subdirectories, calls `SpriteLoader` per subdir. Also exposes `getFolderStructure()` (name → `SpriteBagId` list) for the UI tree without loading images.
 - **`ApplicationHandler`** — wires `ClientContext` callbacks to UI, opens `MainWindow`, uploads local sprites on connect, shows disconnect dialog.
-- **`ClientContext`** — global service locator with `stateRepository`, `eventDispatcher`, and nullable callbacks (`onTokensUpdated`, `onSpriteBagsUpdated`, `onPointersUpdated`, `onConnectedClientsUpdated`).
+- **`ClientContext`** — global service locator with `stateRepository`, `eventDispatcher`, and nullable callbacks (`onTokensUpdated`, `onTokensCountChanged`, `onSpriteBagsUpdated`, `onPointersUpdated`, `onConnectedClientsUpdated`). `onTokensUpdated` fires on every token change (moves and structural). `onTokensCountChanged` fires only when token count changes (spawn/delete, or full sync) — used to trigger expensive UI rebuilds without blocking every move event.
 
 ### Shared (`shared/`)
 
@@ -196,7 +196,7 @@ Sort tokens `sortedBy { index }.reversed()` — same order as rendering but reve
 Both share the same lerp pattern (factor 0.25):
 - `syncWithXxx(list)`: called on network events (EDT). New entries initialise at target (no jump); existing entries keep current visual state and lerp.
 - `tick(list)`: runs every 16ms via Swing Timer in `BoardPanel`.
-- `TokenAnimator.setImmediate(ids)` / `clearImmediate()`: bypasses lerp for locally-dragged tokens.
+- `TokenAnimator.setImmediate(ids)` / `clearImmediate()`: marks tokens as locally-dragged. `setDragPosition(id, x, y)` / `setDragRotation(id, r)`: called from `BoardMouseController` each drag event to store the current cursor-driven position in a `dragOverride` map. `visualize` uses `dragOverride` for immediate tokens instead of stateRepository, so server echoes (which overwrite stateRepository with ~50ms-old positions) cannot cause visual jumps during drag. `tick` also snaps `states` to `dragOverride` so lerp starts from the correct drag position on release.
 - `PointerAnimator` keys entries by `Triple(red, green, blue)` (the client's assigned color).
 
 ### Mouse interaction (`BoardMouseController`)

@@ -153,6 +153,7 @@ class BoardMouseController(
                     val initial = initialPositions[id] ?: return@forEach
                     val newPos = Position(initial.x + worldDx, initial.y + worldDy)
                     stateRepository.saveToken(token.copy(position = newPos))
+                    tokenAnimator.setDragPosition(id, newPos.x.toDouble(), newPos.y.toDouble())
                     debouncer.enqueue(MoveTokensCommand.TokenIdAndPosition(id, newPos, null, null, null))
                 }
             }
@@ -168,6 +169,7 @@ class BoardMouseController(
                     if (token.locked) return@forEach
                     val newRot = Rotation((token.rotation.degrees + delta + 360.0) % 360.0)
                     stateRepository.saveToken(token.copy(rotation = newRot))
+                    tokenAnimator.setDragRotation(id, newRot.degrees)
                     debouncer.enqueue(MoveTokensCommand.TokenIdAndPosition(id, null, newRot, null, null))
                 }
             }

@@ -8,12 +8,20 @@ import net.rafkos.ojkipojki.shared.protocol.event.SomeTokensUpdatedEvent
 // Applies individual update/delete actions rather than replacing the full list.
 class SomeTokensUpdatedEventHandler : Handler<SomeTokensUpdatedEvent> {
     override fun handle(action: SomeTokensUpdatedEvent) {
+        var countChanged = false
         action.tokenActions.forEach { tokenAction ->
             when (tokenAction) {
-                is SomeTokensUpdatedEvent.TokenAction.Update -> ClientContext.stateRepository.saveToken(tokenAction.token)
-                is SomeTokensUpdatedEvent.TokenAction.Delete -> ClientContext.stateRepository.deleteToken(tokenAction.tokenId)
+                is SomeTokensUpdatedEvent.TokenAction.Update -> {
+                    if (ClientContext.stateRepository.findTokenById(tokenAction.token.id) == null) countChanged = true
+                    ClientContext.stateRepository.saveToken(tokenAction.token)
+                }
+                is SomeTokensUpdatedEvent.TokenAction.Delete -> {
+                    countChanged = true
+                    ClientContext.stateRepository.deleteToken(tokenAction.tokenId)
+                }
             }
         }
         ClientContext.onTokensUpdated?.invoke()
+        if (countChanged) ClientContext.onTokensCountChanged?.invoke()
     }
 }

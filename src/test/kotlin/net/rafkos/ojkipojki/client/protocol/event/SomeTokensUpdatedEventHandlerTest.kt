@@ -70,4 +70,38 @@ class SomeTokensUpdatedEventHandlerTest {
 
         assertEquals(1, count)
     }
+
+    @Test
+    fun `does not invoke onTokensCountChanged when only moving existing tokens`() {
+        val id = tokenId()
+        fixture.stateRepository.saveToken(token(id))
+        var countChangedCalled = false
+        ClientContext.onTokensCountChanged = { countChangedCalled = true }
+
+        handler.handle(SomeTokensUpdatedEvent(listOf(SomeTokensUpdatedEvent.TokenAction.Update(token(id, x = 99)))))
+
+        assertFalse(countChangedCalled)
+    }
+
+    @Test
+    fun `invokes onTokensCountChanged when spawning new token`() {
+        var countChangedCalled = false
+        ClientContext.onTokensCountChanged = { countChangedCalled = true }
+
+        handler.handle(SomeTokensUpdatedEvent(listOf(SomeTokensUpdatedEvent.TokenAction.Update(token(tokenId())))))
+
+        assertTrue(countChangedCalled)
+    }
+
+    @Test
+    fun `invokes onTokensCountChanged when deleting token`() {
+        val id = tokenId()
+        fixture.stateRepository.saveToken(token(id))
+        var countChangedCalled = false
+        ClientContext.onTokensCountChanged = { countChangedCalled = true }
+
+        handler.handle(SomeTokensUpdatedEvent(listOf(SomeTokensUpdatedEvent.TokenAction.Delete(id))))
+
+        assertTrue(countChangedCalled)
+    }
 }

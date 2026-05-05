@@ -53,4 +53,14 @@ class TokensSyncEventHandlerTest {
 
         assertEquals(1, count)
     }
+
+    @Test
+    fun `invokes onTokensCountChanged callback exactly once`() {
+        var count = 0
+        ClientContext.onTokensCountChanged = { count++ }
+
+        handler.handle(TokensSyncEvent(emptyList()))
+
+        assertEquals(1, count)
+    }
 }

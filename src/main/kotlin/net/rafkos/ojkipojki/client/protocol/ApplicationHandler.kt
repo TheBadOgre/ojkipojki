@@ -54,6 +54,10 @@ class ApplicationHandler(
                 window.tokenAnimator.syncWithTokens(tokens)
                 selectionState.pruneAgainst(tokens)
                 window.toolbarPanel.refresh()
+            }
+        }
+        ClientContext.onTokensCountChanged = {
+            SwingUtilities.invokeLater {
                 window.spriteBagListPanel.rebuild()
             }
         }

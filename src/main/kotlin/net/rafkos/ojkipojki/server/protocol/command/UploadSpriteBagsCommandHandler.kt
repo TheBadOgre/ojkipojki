@@ -37,7 +37,7 @@ class UploadSpriteBagsCommandHandler : Handler<UploadSpriteBagsCommand> {
 
         val spriteBags = ServerContext.modelRepository.findAllSpriteBags().map { it.toState() }.toList()
 
-        ServerContext.eventBroadcastService.broadcast(GameInitializationEvent(Status.IN_PROGRESS, "initialization.receivingSprites", 0.1))
+        ServerContext.eventBroadcastService.broadcast(GameInitializationEvent(Status.IN_PROGRESS, "initialization.receivingSprites", 0.2))
         ServerContext.eventBroadcastService.broadcast(SpriteBagsUpdatedEvent(spriteBags))
         ServerContext.eventBroadcastService.broadcast(GameInitializationEvent(Status.DONE, "initialization.finished", 1.0))
     }

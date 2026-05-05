@@ -8,6 +8,7 @@ object ClientContext {
     lateinit var eventDispatcher: EventDispatcher
     lateinit var stateRepository: StateRepository
     var onTokensUpdated: (() -> Unit)? = null
+    var onTokensCountChanged: (() -> Unit)? = null
     var onSpriteBagsUpdated: (() -> Unit)? = null
     var onPointersUpdated: (() -> Unit)? = null
     var onConnectedClientsUpdated: ((Int) -> Unit)? = null

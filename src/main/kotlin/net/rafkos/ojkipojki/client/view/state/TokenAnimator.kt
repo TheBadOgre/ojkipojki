@@ -21,6 +21,7 @@ class TokenAnimator {
 
     private val states       = mutableMapOf<TokenId, VisualState>()
     private val immediateIds = mutableSetOf<TokenId>()
+    private val dragOverride = mutableMapOf<TokenId, VisualState>()
     private val knownFlipped = mutableMapOf<TokenId, Boolean>()
     private val flipAnims    = mutableMapOf<TokenId, FlipAnim>()
 
@@ -54,9 +55,16 @@ class TokenAnimator {
         for (token in tokens) {
             val s = states[token.id] ?: continue
             if (token.id in immediateIds) {
-                s.x        = token.position.x.toDouble()
-                s.y        = token.position.y.toDouble()
-                s.rotation = token.rotation.degrees
+                val drag = dragOverride[token.id]
+                if (drag != null) {
+                    s.x        = drag.x
+                    s.y        = drag.y
+                    s.rotation = drag.rotation
+                } else {
+                    s.x        = token.position.x.toDouble()
+                    s.y        = token.position.y.toDouble()
+                    s.rotation = token.rotation.degrees
+                }
                 continue
             }
             val tx = token.position.x.toDouble()
@@ -82,7 +90,13 @@ class TokenAnimator {
     }
 
     fun visualize(token: Token): Token {
-        if (token.id in immediateIds) return token
+        if (token.id in immediateIds) {
+            val drag = dragOverride[token.id] ?: return token
+            return token.copy(
+                position = Position(drag.x.roundToInt(), drag.y.roundToInt()),
+                rotation = Rotation(drag.rotation),
+            )
+        }
         val s    = states[token.id] ?: return token
         val anim = flipAnims[token.id]
         // Show old face during first half of animation, new face during second half
@@ -101,8 +115,28 @@ class TokenAnimator {
         return if (anim.horizontal) scale to 1.0 else 1.0 to scale
     }
 
-    fun setImmediate(ids: Collection<TokenId>) { immediateIds.clear(); immediateIds.addAll(ids) }
-    fun clearImmediate() { immediateIds.clear() }
+    fun setDragPosition(id: TokenId, x: Double, y: Double) {
+        val existing = dragOverride[id]
+        if (existing != null) { existing.x = x; existing.y = y }
+        else dragOverride[id] = VisualState(x, y, states[id]?.rotation ?: 0.0)
+    }
+
+    fun setDragRotation(id: TokenId, rotation: Double) {
+        val existing = dragOverride[id]
+        if (existing != null) existing.rotation = rotation
+        else dragOverride[id] = VisualState(states[id]?.x ?: 0.0, states[id]?.y ?: 0.0, rotation)
+    }
+
+    fun setImmediate(ids: Collection<TokenId>) {
+        immediateIds.clear()
+        immediateIds.addAll(ids)
+        dragOverride.keys.retainAll(ids.toSet())
+    }
+
+    fun clearImmediate() {
+        immediateIds.clear()
+        dragOverride.clear()
+    }
 
     private fun shortestDelta(from: Double, to: Double): Double {
         var d = (to - from) % 360.0

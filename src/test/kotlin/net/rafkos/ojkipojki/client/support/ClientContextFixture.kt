@@ -11,6 +11,7 @@ fun clientContextFixture(): ClientContextFixture {
     ClientContext.stateRepository = repo
     ClientContext.eventDispatcher = EventDispatcher()
     ClientContext.onTokensUpdated = null
+    ClientContext.onTokensCountChanged = null
     ClientContext.onSpriteBagsUpdated = null
     ClientContext.onPointersUpdated = null
     ClientContext.onConnectedClientsUpdated = null

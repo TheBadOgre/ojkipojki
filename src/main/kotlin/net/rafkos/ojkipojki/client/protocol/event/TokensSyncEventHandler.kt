@@ -9,5 +9,6 @@ class TokensSyncEventHandler : Handler<TokensSyncEvent> {
     override fun handle(action: TokensSyncEvent) {
         ClientContext.stateRepository.replaceAllTokens(action.tokens)
         ClientContext.onTokensUpdated?.invoke()
+        ClientContext.onTokensCountChanged?.invoke()
     }
 }
