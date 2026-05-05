@@ -37,7 +37,7 @@ class BoardPanel(
     private var lastPointers: List<Pointer> = emptyList()
 
     init {
-        background = Color(135, 135, 135)
+        background = Color(35, 35, 35)
         preferredSize = Dimension(800, 600)
         isFocusable = true
 
@@ -122,17 +122,17 @@ class BoardPanel(
         val pixelStroke = BasicStroke((1f / zoom).toFloat())
         g2.stroke = pixelStroke
 
-        g2.color = Color(145, 145, 145)
+        g2.color = Color(45, 45, 45)
         var xi = x0; while (xi <= x1) { g2.drawLine(xi, y0, xi, y1); xi += spacing }
         var yi = y0; while (yi <= y1) { g2.drawLine(x0, yi, x1, yi); yi += spacing }
 
-        g2.color = Color(160, 160, 160)
+        g2.color = Color(55, 55, 55)
         xi = (floor(worldLeft / major) * major).toInt()
         while (xi <= x1) { g2.drawLine(xi, y0, xi, y1); xi += major }
         yi = (floor(worldTop / major) * major).toInt()
         while (yi <= y1) { g2.drawLine(x0, yi, x1, yi); yi += major }
 
-        g2.color = Color(170, 170, 170)
+        g2.color = Color(65, 65, 65)
         g2.drawLine(x0, 0, x1, 0)
         g2.drawLine(0, y0, 0, y1)
     }

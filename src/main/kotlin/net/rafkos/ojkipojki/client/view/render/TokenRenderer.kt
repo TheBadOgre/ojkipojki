@@ -17,8 +17,8 @@ import kotlin.math.sqrt
 
 class TokenRenderer {
     companion object {
-        private const val SHADOW_SPREAD = 5
-        private const val EDGE_SPREAD   = 2
+        private const val SHADOW_SPREAD = 10
+        private const val EDGE_SPREAD   = 4
     }
 
     private val imageCache     = mutableMapOf<SpriteId, Pair<BufferedImage, BufferedImage>>()
