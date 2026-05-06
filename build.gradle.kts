@@ -80,8 +80,9 @@ val stageJpackageInput by tasks.registering(Copy::class) {
 
 val stageJpackageContent by tasks.registering(Copy::class) {
     group = "release"
-    from(localResourcesDir) { exclude("sprites/**") }
+    from(localResourcesDir) { exclude("sprites/**"); exclude("scenarios/**") }
     from(localResourcesDir.asFile) { include("sprites/**") }
+    from(localResourcesDir.asFile) { include("scenarios/**") }
     into(jpackageContentDir)
 }
 

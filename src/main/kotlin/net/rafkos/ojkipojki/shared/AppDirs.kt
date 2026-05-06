@@ -10,13 +10,15 @@ object AppDirs {
 
     val spritesRoot: File = installRoot?.resolve("sprites") ?: root.resolve("sprites")
 
+    val scenariosRoot: File = installRoot?.resolve("scenarios") ?: root.resolve("scenarios")
+
     val dataRoot: File = if (installRoot != null) {
         val os = System.getProperty("os.name", "").lowercase()
         val home = File(System.getProperty("user.home", "."))
         when {
             os.contains("mac") -> File(home, "Library/Application Support/ojkipojki")
             os.contains("win") -> installRoot
-            else               -> File(home, ".local/share/ojkipojki")
+            else                       -> File(home, ".local/share/ojkipojki")
         }
     } else {
         File(".")

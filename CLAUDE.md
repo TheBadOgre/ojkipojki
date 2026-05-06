@@ -1,323 +1,182 @@
 # ojkipojki
 
-Simplified tabletop simulator. Lets you load sprite sheets, spawn tokens on a board, and move them. Think Tabletop Simulator but minimal.
-
-## Current state
-
-`Main.kt` opens `LauncherWindow`. From there, user connects to a server or hosts one. Full Swing UI is implemented.
+Minimal tabletop simulator. Load sprite sheets, spawn tokens, move them.
 
 ## Architecture
 
-Client-server over TCP sockets. Server owns all mutable state. Client holds a read-only mirror of that state updated via events.
+Client-server over TCP sockets. **Server owns all mutable state**; client holds read-only mirror updated via events.
 
 ```
-Client                          Server
-  |                               |
-  |-- Command (TCP) ------------> |
-  |                         handle command (serialized via commandExecutor)
-  |                         update ModelRepository
-  |                               |
-  | <-- Event (TCP, broadcast) -- |
-  update StateRepository          |
+Client --Command (TCP)--> Server (commandExecutor: single-threaded ExecutorService)
+                              update ModelRepository
+Client <--Event (TCP, broadcast)-- Server
+update StateRepository
 ```
 
 ### Server (`server/`)
-
-- **`ModelRepository`** — in-memory store (`ConcurrentHashMap`) for mutable model objects: `SpriteBagModel`, `SpriteModel`, `TokenModel`.
-- **`CommandDispatcher`** — routes incoming commands to their handler by type.
-- **`commandExecutor`** (`ServerContext`) — single-threaded `ExecutorService`; all command dispatch runs through it to prevent concurrent model mutation.
-- **`EventBroadcastService`** — sends an event to all connected clients. `broadcastCustom(factory)` overload lets one event vary per recipient (used for `PointersUpdatedEvent`).
-- **`ClientSessionManager`** / **`ConnectionManager`** — manage TCP connections and per-client sessions.
-- **`AutoSaveService`** — saves `ModelRepository` to `last_game.sav` every 5 minutes via a daemon `Timer`.
-- **`TokenSyncHeartbeatService`** — broadcasts a full `TokensSyncEvent` to all clients every 5 seconds.
-- **`GameLoader`** / **`GamePersistence`** — load/save game state. `GameLoader.tryLoad` returns `false` if the save file is corrupted (repo is cleared; caller surfaces the error). See **Save file format** section below.
-- **`ClientColorRegistry`** — assigns a distinct RGB color from a pool of 32 to each connected client; used for pointer rendering.
-- **`PointerRepository`** — in-memory `ConcurrentHashMap<clientId, Pointer>` for current pointer positions; `findAllExcept(clientId)` is used for broadcasting.
-- **`CommandContext`** — `ThreadLocal<String?>` holding the client ID of the command currently being dispatched. Set per-task by the executor before calling `dispatch`.
-
-Models (`server/model/`) are mutable classes with `apply(domain)` to absorb domain state and `toState()` to produce domain objects for events. Sub-models: `PositionModel`, `RotationModel`, `IndexModel`.
+- `ModelRepository` — mutable models (`SpriteBagModel`, `SpriteModel`, `TokenModel`) in `ConcurrentHashMap`. Models have `apply(domain)` and `toState()`.
+- `commandExecutor` (`ServerContext`) — single-threaded; serializes all command dispatch.
+- `CommandContext` — `ThreadLocal<String?>` clientId, set per-task before `dispatch`.
+- `EventBroadcastService` — `broadcast(event)` to all, `broadcast(event, clientId)` unicast, `broadcastCustom(excludeClientId, factory)` per-recipient (used for `PointersUpdatedEvent`).
+- `PointerRepository`, `ClientColorRegistry` (32-color pool), `AutoSaveService` (5min daemon Timer → `last_game.sav`), `TokenSyncHeartbeatService` (5s full `TokensSyncEvent`).
+- `GameLoader.tryLoad` returns false on corruption (repo cleared; caller surfaces error).
 
 ### Client (`client/`)
-
-- **`StateRepository`** — in-memory store (`ConcurrentHashMap`) for immutable domain objects: `SpriteBag`, `Sprite`, `Token`, `Pointer`.
-- **`EventDispatcher`** — routes incoming events to their handler by type.
-- **`CommandTransmitter`** — sends commands to the server over the socket.
-- **`SpriteLoader`** — loads sprite bags from a directory of PNGs (see below).
-- **`SpriteBagDirectoryLoader`** — scans `sprites/` subdirectories, calls `SpriteLoader` per subdir. Also exposes `getFolderStructure()` (name → `SpriteBagId` list) for the UI tree without loading images.
-- **`ApplicationHandler`** — wires `ClientContext` callbacks to UI, opens `MainWindow`, uploads local sprites on connect, shows disconnect dialog.
-- **`ClientContext`** — global service locator with `stateRepository`, `eventDispatcher`, and nullable callbacks (`onTokensUpdated`, `onTokensCountChanged`, `onSpriteBagsUpdated`, `onPointersUpdated`, `onConnectedClientsUpdated`). `onTokensUpdated` fires on every token change (moves and structural). `onTokensCountChanged` fires only when token count changes (spawn/delete, or full sync) — used to trigger expensive UI rebuilds without blocking every move event.
+- `StateRepository` — immutable domain objects in `ConcurrentHashMap`.
+- `ClientContext` — service locator + nullable callbacks. **`onTokensUpdated` fires every token change; `onTokensCountChanged` fires only on count change** (spawn/delete/sync) — used to gate expensive UI rebuilds.
+- `ApplicationHandler` — wires callbacks to UI, uploads local sprites on connect.
+- `SpriteLoader` / `SpriteBagDirectoryLoader` (in `client/application/`).
 
 ### Shared (`shared/`)
+**Domain (immutable, Serializable, all have `serialVersionUID`):**
+- `SpriteBag(id, groupName, sprites)`, `Sprite(id, frontImageBytes, backImageBytes)` (WebP)
+- `Token(id, spriteId, position, rotation, index, flipped, locked)`
+- `Pointer(x, y, red, green, blue)` — keyed by assigned RGB color
+- IDs: `SpriteBagId(String)`, `SpriteId(SpriteBagId, r, g, b)`, `TokenId(UUID)`
 
-Domain classes and protocol interfaces used by both sides.
-
-**Domain objects** (immutable, used as-is on client):
-- `SpriteBag(id, groupName, sprites)` — a named collection of sprites; `groupName` is the subdirectory name.
-- `Sprite(id, frontImageBytes, backImageBytes)` — one game piece, front and back images as WebP bytes.
-- `Token(id, spriteId, position, rotation, index, flipped, locked)` — a placed instance of a sprite on the board.
-- `Pointer(x, y, red, green, blue)` — another client's cursor position, identified by its assigned RGB color.
-
-**IDs:**
-- `SpriteBagId(String)` — simple string name (e.g. `"dice"`).
-- `SpriteId(SpriteBagId, red, green, blue)` — composite key; the RGB comes from the mask file (see SpriteLoader).
-- `TokenId(UUID)` — random UUID assigned at spawn.
-
-**Protocol abstractions:** `Handler<A>`, `Dispatcher<A>`, `Receiver`, `Transmitter` — generic interfaces for the command/event pipeline.
-
-**`AppDirs`** — resolves filesystem paths for assets and user data. Uses `app.dir` system property (set by jpackage launcher via `$APPDIR`); falls back to CWD for local dev.
-- `root` / `resolve(path)` — points to `$APPDIR` (JAR directory) in packaged builds, CWD for local dev.
-- `spritesRoot` — sprite assets directory. Packaged: one level above `$APPDIR` (`<app>/sprites/`). Local dev: `./sprites/`.
-- `dataRoot` / `resolveData(path)` — user-writable data (saves). Points to a platform-specific user directory when packaged (except Windows), or CWD for local dev:
-  - Linux: `~/.local/share/ojkipojki/`
-  - macOS: `~/Library/Application Support/ojkipojki/`
-  - Windows: one level above `$APPDIR` (`<app>/`) — so `resolveData("saves")` = `<app>/saves/`
-
-**`LocaleService`** — loads `/locale/locale_en.properties` from classpath, then overlays the system language file if different from `en`. `get(key)` / `get(key, vararg args)` for parameterised strings. Loaded once at startup. Every text visible in UI (not console) should be available in all available languages.
+**Protocol:** `Handler<A>`, `Dispatcher<A>`, `Receiver`, `Transmitter`.
 
 ## Commands and Events
 
-| Direction | Type | Effect |
+| Direction | Type | Notes |
 |---|---|---|
-| Client → Server | `UploadSpriteBagsCommand(spriteBags)` | Upsert sprite bags in `ModelRepository`, broadcast `SpriteBagsUpdatedEvent` |
-| Client → Server | `SpawnTokensCommand(spriteBagId, position?, spriteId?)` | Create `TokenModel` per sprite (or one if `spriteId` given), broadcast `SomeTokensUpdatedEvent` |
-| Client → Server | `MoveTokensCommand(adjustments)` | Update position/rotation/index/flipped on existing tokens; null field = no change; broadcast `SomeTokensUpdatedEvent` |
-| Client → Server | `DeleteTokensCommand(tokenIds)` | Remove tokens, broadcast `SomeTokensUpdatedEvent` |
-| Client → Server | `ShuffleTokensCommand(tokenIds)` | Randomise `index` values of given tokens, broadcast `SomeTokensUpdatedEvent` |
-| Client → Server | `LockTokensCommand(tokenIds, locked)` | Set `locked` flag on tokens, broadcast `SomeTokensUpdatedEvent` |
-| Client → Server | `MovePointerCommand(x, y)` | Store pointer in `PointerRepository`, broadcastCustom `PointersUpdatedEvent` (each client gets list excluding itself) |
-| Server → Clients | `SpriteBagsUpdatedEvent(spriteBags)` | Full list of all sprite bags — client saves each, no purge |
-| Server → Clients | `SomeTokensUpdatedEvent(tokenActions)` | Per-token Update/Delete delta — client applies each action individually |
-| Server → Clients | `TokensSyncEvent(tokens)` | Full token list — client replaces all. Sent on connect and every 5 s by heartbeat |
-| Server → Clients | `PointersUpdatedEvent(pointers)` | All other clients' current pointer positions |
-| Server → Clients | `ConnectedClientsUpdateEvent(numOfClients)` | Current session count |
+| C→S | `UploadSpriteBagsCommand` | Upsert, broadcast `SpriteBagsUpdatedEvent` |
+| C→S | `SpawnTokensCommand(bagId, position?, spriteId?)` | One token per sprite (or single if `spriteId`) |
+| C→S | `MoveTokensCommand(adjustments)` | null field = no change |
+| C→S | `DeleteTokensCommand`, `ShuffleTokensCommand`, `LockTokensCommand` | |
+| C→S | `MovePointerCommand` | `broadcastCustom` excludes sender |
+| S→C | `SomeTokensUpdatedEvent` | Per-token Update/Delete delta |
+| S→C | `TokensSyncEvent` | Full list — replaces all. Sent on connect + 5s heartbeat |
+| S→C | `SpriteBagsUpdatedEvent`, `PointersUpdatedEvent`, `ConnectedClientsUpdateEvent` | |
 
-## Sprite loading (`SpriteLoader`)
+## Sprite loading
 
-Reads a directory of PNGs. Files are grouped by the prefix before the first `_`. Each group needs three files:
-
-```
-{id}_front.png   — front face of all sprites in this bag
-{id}_back.png    — back face
-{id}_mask.png    — color map: each unique non-black RGB color defines one sprite
-```
-
-`SpriteId` encodes the RGB from the mask. The loader finds the bounding box of each color region, crops it out of front/back images, and masks pixels belonging to other sprites transparent.
-
-## Package structure
-
-```
-net.rafkos.ojkipojki
-├── launcher/
-│   ├── LauncherWindow.kt      # Entry point UI — connect or host
-│   └── ServerConsoleWindow.kt # Dark log window shown when hosting; tees stdout/stderr
-├── shared/
-│   ├── domain/          # Domain classes + IDs (immutable, Serializable, all have serialVersionUID)
-│   ├── locale/          # LocaleService
-│   └── protocol/        # Handler, Dispatcher, Receiver, Transmitter + command/event types
-├── server/
-│   ├── ServerContext.kt # Global service locator (modelRepository, commandDispatcher, commandExecutor, …)
-│   ├── ServerRunner.kt  # Wires up server, starts services, registers shutdown hook
-│   ├── model/           # Mutable model classes (apply/toState): SpriteBagModel, SpriteModel, TokenModel, sub-models
-│   ├── application/     # ModelRepository, PointerRepository, ClientColorRegistry,
-│   │                    # GameLoader, AutoSaveService, TokenSyncHeartbeatService, CommandContext
-│   └── application/persistence/  # GamePersistence, GameData, GameSave, GameDataSerializer,
-│                                  # GameDataDeserializer, GameDataV1 (+ V1Serializer, V1Deserializer)
-│   └── protocol/
-│       ├── command/     # CommandDispatcher, CommandReceiver + handlers
-│       └── event/       # EventBroadcastService, EventTransmitter
-└── client/
-    ├── ClientContext.kt # Global service locator + event callbacks
-    ├── ClientRunner.kt  # Wires up client, opens MainWindow via ApplicationHandler
-    ├── application/     # StateRepository, SpriteLoader, SpriteBagDirectoryLoader
-    ├── protocol/
-    │   ├── ApplicationHandler.kt  # Connects network session to UI lifecycle
-    │   ├── command/     # CommandTransmitter
-    │   └── event/       # EventDispatcher + handlers
-    └── view/
-        ├── MainWindow.kt
-        ├── state/       # SelectionState, ViewportState, TokenAnimator, PointerAnimator
-        ├── action/      # BoardActions, CommandDebouncer, SpriteBagSpawnHandler, PointerCommandSender
-        ├── render/      # TokenRenderer
-        ├── input/       # BoardMouseController, BoardWheelController, DragRectOverlay
-        ├── icon/        # Icons (toolbar icon helpers)
-        └── panel/       # BoardPanel, ToolbarPanel, SpriteBagListPanel, StatusBarPanel
-```
-
-## Launcher (`launcher/`)
-
-`LauncherWindow` — two panels:
-- **Connect to server**: host + port fields (default `127.0.0.1:12001`), "connect to server" button → `ClientRunner.startClient(host, port)` on daemon thread, launcher disposes.
-- **Host server**: port field (default `12001`), "host server" button → opens `ServerConsoleWindow`, then `ServerRunner.startServer(port)` on daemon thread, launcher disposes.
-
-Closing launcher via X exits JVM (nothing else running). After a button click launcher swaps to `DISPOSE_ON_CLOSE` before disposing, so the JVM stays alive.
-
-`ServerConsoleWindow` — dark monospace JFrame titled "Ojkipojki server". On creation tees `System.out`/`System.err` to its `JTextArea`; restores original streams on close.
+`SpriteLoader` reads `{id}_front.png`, `{id}_back.png`, `{id}_mask.png`. Each non-black RGB in mask = one sprite (becomes `SpriteId.r/g/b`). Loader bounding-boxes each color region, crops front/back, masks other sprites transparent.
 
 ## UI architecture (`client/view/`)
 
-Swing-based UI. All business state in `state/`, rendering in `render/`, input handling in `input/`, no logic in panels.
+Swing. State in `state/`, render in `render/`, input in `input/`. **No logic in panels.**
 
-### Threading rules
-- All Swing work on EDT. Network events arrive on socket thread → handlers dispatch via `SwingUtilities.invokeLater`.
-- `StateRepository` is thread-safe (`ConcurrentHashMap`). Reads on EDT are fine.
-- `TokenAnimator`, `PointerAnimator`, `SelectionState`, `ViewportState` are EDT-only — no sync needed.
+### Threading
+- All Swing on EDT. Network events → `SwingUtilities.invokeLater`.
+- `StateRepository` thread-safe. `TokenAnimator`, `PointerAnimator`, `SelectionState`, `ViewportState` are EDT-only.
 
 ### Coordinate system (`ViewportState`)
-- `screen = (world + offset) * zoom + panelCenter`
-- `worldToScreen` / `screenToWorld` for hit-testing and DnD drops.
-- `affineTransform(w, h)`: `translate(panelCenter) * scale(zoom) * translate(offset)` — applied via `g2.transform(at)` (concatenates, preserves HiDPI base transform).
+`screen = (world + offset) * zoom + panelCenter`. `affineTransform` = `translate(panelCenter) * scale(zoom) * translate(offset)`, applied with `g2.transform(at)` to preserve HiDPI base transform.
 
-### Rendering (`BoardPanel.paintComponent`)
-1. Apply viewport transform → draw grid in world space.
-2. Sort tokens by `index.value` ascending (lowest = bottom).
-3. Each token: `tokenAnimator.visualize(token)` for smooth position, then `TokenRenderer.draw()`.
-4. Draw other clients' pointers using `pointerAnimator.visualize(pointer)`.
-5. Restore transform → draw drag-rect overlay in screen space.
+### Rendering order
+1. Grid in world space.
+2. Tokens sorted by `index` ascending (lowest = bottom). Each: `tokenAnimator.visualize(token)` → `TokenRenderer.draw()`.
+3. Pointers via `pointerAnimator.visualize`.
+4. Drag-rect overlay in screen space.
 
-### Token depth effect (`TokenRenderer`)
-Three layers per token, drawn in world space under the token's local transform:
-1. Shadow at `(+5, +5)`: alpha-mask of image, pure black, 45% opacity.
-2. Dark edge at `(+2, +2)`: image darkened to 35% brightness — simulates thickness.
-3. Main image at `(0, 0)`.
-All three images cached per `SpriteId`. Shadow/edge computed once from front image (not per flipped state).
+Hit-testing reverses render order (topmost first). Selection outline 1px `#50A0FF` dashed, width `1/zoom`.
 
-### Selection (`SelectionState`)
-- `Set<TokenId>` + listener list. All mutation methods call `notifyListeners()`.
-- `pruneAgainst(tokens)` called on every token update event to drop deleted token IDs.
-- Selection outline: 1px blue (#50A0FF) dashed stroke, width corrected to `1/zoom` to stay 1px on screen.
+### `TokenRenderer` depth effect
+Three cached layers per `SpriteId`: shadow `(+5,+5)` 45% black alpha-mask; dark edge `(+2,+2)` brightness 35%; main image. Shadow/edge from front only (not per-flipped).
 
-### Logging
-Logging uses log4j. Every log message should be produced via LogManager, e.g. `private val log = LogManager.getLogger(GameLoader::class.java)` or from companion objects in case of classes.
+### Animators (`TokenAnimator`, `PointerAnimator`)
+Lerp factor 0.25, tick 16ms via Swing Timer in `BoardPanel`. New entries init at target (no jump).
 
-### Hit testing (`BoardMouseController.findTokenAt`)
-Sort tokens `sortedBy { index }.reversed()` — same order as rendering but reversed, so topmost visible token is checked first.
+**`TokenAnimator` drag override (critical):** `setImmediate(ids)` + `setDragPosition/Rotation` write to `dragOverride` map. `visualize` reads from `dragOverride` for immediate tokens instead of `stateRepository`, so server echoes (~50ms-old positions) cannot cause visual jumps mid-drag. `tick` snaps `states` to `dragOverride` so lerp on release starts from correct position.
 
-### Smooth animation (`TokenAnimator`, `PointerAnimator`)
-Both share the same lerp pattern (factor 0.25):
-- `syncWithXxx(list)`: called on network events (EDT). New entries initialise at target (no jump); existing entries keep current visual state and lerp.
-- `tick(list)`: runs every 16ms via Swing Timer in `BoardPanel`.
-- `TokenAnimator.setImmediate(ids)` / `clearImmediate()`: marks tokens as locally-dragged. `setDragPosition(id, x, y)` / `setDragRotation(id, r)`: called from `BoardMouseController` each drag event to store the current cursor-driven position in a `dragOverride` map. `visualize` uses `dragOverride` for immediate tokens instead of stateRepository, so server echoes (which overwrite stateRepository with ~50ms-old positions) cannot cause visual jumps during drag. `tick` also snaps `states` to `dragOverride` so lerp starts from the correct drag position on release.
-- `PointerAnimator` keys entries by `Triple(red, green, blue)` (the client's assigned color).
+`PointerAnimator` keys by `Triple(r,g,b)`.
 
-### Mouse interaction (`BoardMouseController`)
-State machine modes: `IDLE`, `DRAG_TOKENS`, `RECT_SELECT`, `RECT_SELECT_ADDITIVE`, `RMB_ROTATE`, `MMB_PAN`.
-- **LMB**: token hit-test → select + drag or rect-select. Ctrl adds to selection. Ctrl + no-move = toggle.
-- **RMB** (selection non-empty): horizontal drag = rotate selected tokens (1px = 1°), sent via debouncer.
-- **MMB**: drag pans viewport (`offsetX/Y += screenDelta / zoom`).
-- **Scroll wheel**: zoom anchored at cursor. `Ctrl + scroll`: rotate selected ±10°, debouncer flushed immediately.
-- **WASD / arrows**: pan viewport 50 screen-px per keypress (`WHEN_IN_FOCUSED_WINDOW`). Right/D = camera right = `offsetX -= step`.
-- **Delete / Backspace**: `BoardActions.delete()`.
+### Mouse (`BoardMouseController`)
+Modes: `IDLE`, `DRAG_TOKENS`, `RECT_SELECT`, `RECT_SELECT_ADDITIVE`, `RMB_ROTATE`, `MMB_PAN`. RMB rotate = 1px/°. Ctrl+scroll = ±10° flushed immediately. WASD/arrows pan 50 screen-px. Right/D = camera-right = `offsetX -= step`.
 
-### Command debouncing (`CommandDebouncer`)
-Swing Timer at 50ms. Pending map `TokenId → Adjustment` (last-write-wins per field). `flush()` called on mouse release, RMB release, and wheel rotation for immediate send.
+### Debouncing (`CommandDebouncer`)
+Swing Timer 50ms. `TokenId → Adjustment` last-write-wins per field. `flush()` on mouse/RMB release and wheel.
 
-### Pointer sending (`PointerCommandSender`)
-Listens to mouse moves on `BoardPanel`. Converts screen coords to world via `ViewportState.screenToWorld`, sends `MovePointerCommand`. Lives in `view/action/`.
+### Sprite tree (`SpriteBagListPanel`)
+`JTree`. Structure from `SpriteBagDirectoryLoader.getFolderStructure()` — scans dirs only, no image load. Leaf double-click = spawn at null. Drag exports `SpriteBagId.id` via `stringFlavor`.
 
-### Sprite tree panel (`SpriteBagListPanel`)
-`JTree` backed by `DefaultMutableTreeNode`. Structure built from `SpriteBagDirectoryLoader.getFolderStructure()` (scans `sprites/` subdirs for PNG prefixes — no image loading). Folder nodes auto-expand on `refresh()`. Leaf double-click = spawn at null (random). Drag exports `SpriteBagId.id` string via `stringFlavor`.
+## CLI (`CliRunner`)
 
-### Sprite loading
-`SpriteLoader` and `SpriteBagDirectoryLoader` are both in `client/application/`, package `net.rafkos.ojkipojki.client.application`.
+`--server` flag in `main()` routes to `CliRunner.run(args)`.
 
-## Save file format
+`CliRunner.parseArgs(args): ParseResult` — testable, no side-effects. Returns `Success(port, saveFile?)` or `Error(message)`.
 
-Save files live in `AppDirs.resolveData("saves")/`. Format: GZIP-wrapped Java `ObjectOutputStream` containing a `GameSave` implementor.
-
-### Versioning pattern (`persistence/`)
-
-| Class | Role |
+| Flag | Effect |
 |---|---|
-| `GameSave` | Marker interface — every versioned save format implements it |
-| `GameDataSerializer<G>` | `serialize(repo): G` — converts live `ModelRepository` to a `GameSave` |
-| `GameDataDeserializer<G>` | `deserialize(gameSave): GameData` — converts a `GameSave` to the common `GameData` result |
-| `GameData` | Common output of load: `spriteBags + tokens` (domain objects) |
-| `GamePersistence` | Writes with the latest serializer; reads and dispatches by `when (is GameDataVN)` to the matching deserializer |
+| _(none)_ | loads `autosave.sav` from `savesDir` |
+| `--start-fresh` | `saveFile = null` (empty repo) |
+| `--load-save <filename>` | resolves `File(savesDir, filename)` |
+| `--scenario <filename>` | resolves `File(scenariosDir, filename)` |
+| `--port <int>` | server port (default 12001) |
 
-Adding a new version: implement `GameDataV2`, `GameDataV2Serializer`, `GameDataV2Deserializer`, add a branch to the `when` in `GamePersistence.load`, update `GamePersistence.serializer` to `GameDataV2Serializer()`.
+`--load-save`, `--start-fresh`, `--scenario` are mutually exclusive — any two together → `ParseResult.Error`.
 
-### V1 format (`GameDataV1`)
+## Scenarios
 
-**Saves tokens only — sprite bags are NOT saved.**
+Save-format files (`.sav`) in `scenariosRoot`. Same GZIP/ObjectStream format as saves. Users copy any save → scenarios dir to snapshot a board state.
 
-Rationale: sprite WebP bytes are already compressed; GZIP produces no meaningful reduction. Sprites are always re-uploaded by clients on connect (`UploadSpriteBagsCommand` sent by `ApplicationHandler.onSessionReady`), so storing them is pure duplication. Saves are tiny (a few KB regardless of sprite count).
+- `GamePersistence.listScenarioFiles()` — returns `.sav` files sorted alphabetically (no timestamp relevance).
+- Launcher: scenarios appended after saves in the list, displayed as `name [scenario]` (no date).
+- CLI: `--scenario <filename>` alternative to `--load-save`.
+- Scenarios are bundled with the app (staged via `--app-content`); saves are user-generated.
 
-`GameData.spriteBags` is always `emptyList()` after a load. `GameLoader` tolerates this — the empty loop is a no-op.
+## Save format
 
-`SpriteId` is encoded as a string `"${bagId}:${r}:${g}:${b}"`. Decoding splits from the right (last 3 colon-segments = r, g, b; remainder = bag ID), so colons in bag names are safe.
+`AppDirs.resolveData("saves")/`. GZIP-wrapped Java `ObjectOutputStream` containing a `GameSave`.
 
-### Init dialog and sprite-less restarts
+### Versioning
+- `GameSave` marker interface, `GameDataSerializer<G>`, `GameDataDeserializer<G>`, common `GameData` result.
+- `GamePersistence` writes via latest serializer, reads with `when (is GameDataVN)`.
+- New version: implement `GameDataV2` + serializer + deserializer, add `when` branch, update `GamePersistence.serializer`.
 
-After a server restart with no sprites in `ModelRepository`, `ClientSessionManager.onClientConnected` sends `SpriteBagsUpdatedEvent(emptyList)` followed by `GameInitializationEvent(DONE)`. The UI is locked by the init dialog throughout. The client immediately sends `UploadSpriteBagsCommand` on connect; `UploadSpriteBagsCommandHandler` sends `IN_PROGRESS` (re-locks dialog) then `DONE` (unlocks). The user never sees a broken-sprite state.
+### V1 — tokens only, NOT sprite bags
+Sprite WebP bytes already compressed (GZIP useless), and clients re-upload on connect via `UploadSpriteBagsCommand`. Saves are KB-tiny. `GameData.spriteBags = emptyList()` after load — `GameLoader` tolerates.
+
+`SpriteId` encoded `"${bagId}:${r}:${g}:${b}"`. Decode splits from right (last 3 segments = rgb), so colons in bag names safe.
+
+### Init dialog / sprite-less restart
+Server with no sprites: `ClientSessionManager.onClientConnected` sends `SpriteBagsUpdatedEvent(emptyList)` then `GameInitializationEvent(DONE)`. UI locked by init dialog. Client immediately sends `UploadSpriteBagsCommand`; handler emits `IN_PROGRESS` (re-locks) then `DONE` (unlocks). User never sees broken-sprite state.
+
+## Conventions
+
+- **Logging:** log4j via `LogManager.getLogger(Cls::class.java)`, prefer companion val.
+- **Locale:** all UI text via `LocaleService.get(key, ...args)`. Loaded once at startup; en + system-language overlay. Console logs not localized.
+- **Tests required:** new command/event/handler **must** have a serialization test + handler test, and be registered in dispatcher (covered by dispatcher coverage tests). Enforced by `./gradlew test` which runs before `release_all`.
+- **`AppDirs`** resolves paths via `app.dir` system property (set by jpackage launcher from `$APPDIR`); CWD fallback for local dev.
+  - `spritesRoot`: one level above `$APPDIR` packaged, `./sprites/` local.
+  - `scenariosRoot`: one level above `$APPDIR` packaged, `./scenarios/` local. Staged via `--app-content` same as sprites.
+  - `dataRoot` (`resolveData(path)`): user-writable. Linux `~/.local/share/ojkipojki/`, macOS `~/Library/Application Support/ojkipojki/`, Windows one level above `$APPDIR`, local-dev CWD.
 
 ## Tests
 
-Run with `./gradlew test`. Tests live under `src/test/kotlin` mirroring the main source structure.
+`./gradlew test`. Mirrors main package structure under `src/test/kotlin`.
 
-### What is tested
+### Fixtures
+- `ServerContextFixture` — fresh real repos + mocked `EventBroadcastService`/`CommandDispatcher` per test.
+- `ClientContextFixture` — fresh `StateRepository` + `EventDispatcher`, nulled callbacks.
+- `socketPair()` — connected loopback `(client, accepted)`. **Create peer's `ObjectOutputStream` BEFORE the other side's `ObjectInputStream` constructor**, else it blocks.
+- `await()` — poll-with-timeout, use instead of `Thread.sleep`.
 
-- **Commands and events** — Java serialization round-trips for every `Command` and `Event` subtype. A new command or event requires a serialization test and a `serialVersionUID` companion declaration.
-- **Command handlers** — each handler is tested against a real `ModelRepository` / `PointerRepository` with a mocked `EventBroadcastService`. Tests assert (a) repository state after the call and (b) the exact event type and payload broadcast. Handlers that touch `CommandContext.clientId` must set it in the test and reset it in `@AfterEach`.
-- **Event handlers** — each handler is tested against a real `StateRepository`. Tests assert (a) repository state after the call and (b) callbacks (`onTokensUpdated`, `onSpriteBagsUpdated`, etc.) invoked exactly once.
-- **Dispatchers** — `CommandDispatcher` and `EventDispatcher` are checked to have an entry for every known command/event type. A new command or event must be registered in the dispatcher or the test fails.
-- **Repositories** — `ModelRepository`, `PointerRepository`, `ClientColorRegistry`, `StateRepository` tested with real instances.
-- **Connection layer** — `ConnectionManager`, `ClientSessionManager`, `ServerConnection`, `ClientSession` tested with real loopback sockets.
-- **Persistence** — `GameDataV1Serializer`, `GameDataV1Deserializer`, and `GamePersistence` tested directly. `GamePersistenceTest` uses `@TempDir` — no dependency on `AppDirs`. Tests cover field preservation, SpriteId colon-in-bag-name encoding, GZIP magic bytes, and unknown-format error handling.
+### Gotchas
+- `ServerContext`/`ClientContext` are JVM-wide singletons. Reinstall fixture in `@BeforeEach`; reset `CommandContext.clientId = null` in `@AfterEach` for handler tests.
+- `EventBroadcastService` mocked. `broadcast(event)` and `broadcast(event, clientId)` are separate overloads.
+- `broadcastCustom` first arg `excludeClientId: String?` — use `anyOrNull()` not `any()` if call may pass null.
+- Sequential test execution required (singletons not isolated).
 
-### Test infrastructure
+## Build & run
 
-| Fixture | Purpose |
-|---|---|
-| `ServerContextFixture` (`server/support/`) | Installs fresh real repositories + mocked `EventBroadcastService` / `CommandDispatcher` into `ServerContext` before each test. |
-| `ClientContextFixture` (`client/support/`) | Installs fresh `StateRepository` + `EventDispatcher`, nulls all callbacks into `ClientContext`. |
-| `socketPair()` (`support/SocketPair.kt`) | Returns a connected `(clientSocket, acceptedSocket)` pair over loopback. Required for any test that constructs `Transmitter`/`Receiver`. When using `socketPair()`, create `ObjectOutputStream` on the peer socket **before** calling code that constructs `ObjectInputStream` on the other side — otherwise the constructor blocks. |
-| `await()` (`support/SocketPair.kt`) | Polls a condition with a timeout; use instead of `Thread.sleep` for cross-thread assertions. |
-
-### Key gotchas
-
-- `ServerContext` and `ClientContext` are JVM-wide singletons. Always reinstall the fixture in `@BeforeEach`; reset `CommandContext.clientId = null` in `@AfterEach` for handler tests.
-- `EventBroadcastService` is mocked (not the real one). Verify calls with `argumentCaptor<Event>()` against `broadcast(event)` (single-arg, broadcasts to all) vs `broadcast(event, clientId)` (two-arg, unicast) — they are separate overloads.
-- `broadcastCustom` takes a nullable `excludeClientId: String?` as first arg. Use `anyOrNull()` not `any()` when the call may pass `null`.
-- Tests run sequentially (Gradle default). Do not enable parallel test execution — singletons are not isolated across concurrent test classes.
-
-### Rule: add tests for new logic
-
-Any new command, event, command handler, event handler, or protocol class **must** have a corresponding test. Dispatchers must be updated to include the new type or the coverage test fails. This is enforced by `./gradlew test` which runs before release via `release_all`.
-
-## Build and run
-
-### Local run (`run` task)
 ```
-./gradlew run
+./gradlew run          # copies local_resources/ → last_run_tmp/, runs there
+./gradlew release_all  # clean → build → jpackage → output/
 ```
-- Copies `./local_resources/` → `./last_run_tmp/` (preserves any runtime-generated files like saves).
-- Launches the JVM with `./last_run_tmp/` as working directory.
-- `./last_run_tmp/` persists after exit — intentional, holds runtime output (e.g. `last_game.sav`).
-- `./sprites/` subdirs must exist under `./last_run_tmp/` for sprite loading to work (copied from `local_resources/sprites/`).
 
-### Release (`release_all` task)
-```
-./gradlew release_all
-```
-- Runs `clean` → `build` (compile + tests) → jpackage → `./output/`.
-- **jpackage is OS-native — it can only build for the host OS.** Run on each OS separately (or via CI) to get all platform artifacts:
-  - Windows → `./output/<name>_<version>_windows_x64.zip` (app-image zip)
-  - Linux → `./output/<name>_<version>_linux_x64.deb` + `.rpm`
-  - macOS → `./output/<name>_<version>_macos_x64.dmg`
-- Windows exe icon set from `./local_resources/icon.ico`. Linux/macOS icons require `.png`/`.icns` — add to `local_resources/` and wire in `build.gradle.kts` if needed.
-- Re-running overwrites existing artifacts in `./output/`.
+`./last_run_tmp/` persists between runs (holds saves). `./sprites/` and `./scenarios/` subdirs must exist there (copied from `local_resources/`).
 
-### Packaged directory layout
+**jpackage is OS-native — runs only build host OS.** Artifacts: Windows zip, Linux deb+rpm, macOS dmg.
 
-jpackage places files differently per platform. `$APPDIR` (set as `app.dir` system property) always points to the directory containing the JARs:
+### Packaged layout
 
-| Platform | JARs (`$APPDIR`) | Sprites | Saves (user data, runtime) |
-|---|---|---|---|
-| Windows (zip) | `<app>/app/` | `<app>/sprites/` | `<app>/saves/` |
-| Linux (deb) | `/opt/ojkipojki/lib/app/` | `/opt/ojkipojki/sprites/` | `~/.local/share/ojkipojki/saves/` |
-| macOS (dmg) | `<App>.app/Contents/app/` | `<App>.app/Contents/sprites/` | `~/Library/Application Support/ojkipojki/saves/` |
-| Local dev | CWD (`last_run_tmp/`) | `last_run_tmp/sprites/` | `last_run_tmp/saves/` |
+| Platform | `$APPDIR` | Sprites | Scenarios | Saves |
+|---|---|---|---|---|
+| Windows zip | `<app>/app/` | `<app>/sprites/` | `<app>/scenarios/` | `<app>/saves/` |
+| Linux deb | `/opt/ojkipojki/lib/app/` | `/opt/ojkipojki/sprites/` | `/opt/ojkipojki/scenarios/` | `~/.local/share/ojkipojki/saves/` |
+| macOS dmg | `<App>.app/Contents/app/` | `<App>.app/Contents/sprites/` | `<App>.app/Contents/scenarios/` | `~/Library/Application Support/ojkipojki/saves/` |
+| Local dev | CWD `last_run_tmp/` | `last_run_tmp/sprites/` | `last_run_tmp/scenarios/` | `last_run_tmp/saves/` |
 
-`sprites/` is staged into `jpackageContentDir` and passed via `--app-content`, landing one level above `$APPDIR` (`<app>/sprites/`) on all platforms. Other `local_resources/` items (icon, readmes) also go via `--app-content`.
-
-`saves/` is never bundled; it is created at runtime by `GamePersistence` (via `AppDirs.resolveData`). On Windows it lands at `<app>/saves/` (writable app-image directory); on Linux/macOS it stays in the platform user-data directory. The save directory is created on first save (`savesDir.mkdirs()` in `GamePersistence.save`).
+`sprites/` and `scenarios/` staged into `jpackageContentDir` via `--app-content` (land one level above `$APPDIR`). `saves/` never bundled — created on first save (`savesDir.mkdirs()` in `GamePersistence.save`).

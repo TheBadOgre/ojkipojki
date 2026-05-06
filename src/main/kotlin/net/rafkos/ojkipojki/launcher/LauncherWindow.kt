@@ -96,10 +96,15 @@ class LauncherWindow : JFrame(LocaleService.get("launcher.title")) {
         )
 
         val saveFiles: List<File> = GamePersistence.listSaveFiles()
+        val scenarioFiles: List<File> = GamePersistence.listScenarioFiles()
+        val allFiles: List<File> = saveFiles + scenarioFiles
         val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm")
         val listModel = DefaultListModel<String>()
         saveFiles.forEach { f ->
             listModel.addElement("%-30s %s".format(f.name, dateFormat.format(Date(f.lastModified()))))
+        }
+        scenarioFiles.forEach { f ->
+            listModel.addElement("%-30s [scenario]".format(f.name))
         }
         val savesList = JList(listModel)
         savesList.font = Font(Font.MONOSPACED, Font.PLAIN, 12)
@@ -157,7 +162,7 @@ class LauncherWindow : JFrame(LocaleService.get("launcher.title")) {
         hostButton.addActionListener {
             val port = portField.text.trim().toIntOrNull() ?: return@addActionListener
             val selectedIdx = savesList.selectedIndex
-            val selectedFile = if (selectedIdx >= 0 && selectedIdx < saveFiles.size) saveFiles[selectedIdx] else null
+            val selectedFile = if (selectedIdx >= 0 && selectedIdx < allFiles.size) allFiles[selectedIdx] else null
             val console = ServerConsoleWindow()
             defaultCloseOperation = DISPOSE_ON_CLOSE
             dispose()

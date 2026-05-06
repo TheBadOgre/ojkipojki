@@ -15,6 +15,7 @@ import java.time.format.DateTimeFormatter
 
 object GamePersistence {
     val savesDir = AppDirs.resolveData("saves")
+    val scenariosDir = AppDirs.scenariosRoot
     val autoSaveFile get() = File(savesDir, "autosave.sav")
 
     private val serializer: GameDataSerializer<*> = GameDataV1Serializer()
@@ -36,6 +37,10 @@ object GamePersistence {
     fun listSaveFiles(): List<File> =
         (savesDir.listFiles { f -> f.extension == "sav" } ?: emptyArray<File>())
             .sortedByDescending { it.lastModified() }
+
+    fun listScenarioFiles(): List<File> =
+        (scenariosDir.listFiles { f -> f.extension == "sav" } ?: emptyArray<File>())
+            .sortedBy { it.nameWithoutExtension }
 
     fun timestampedAutoSaveFile(): File {
         val stamp = ZonedDateTime.now(ZoneOffset.UTC)
