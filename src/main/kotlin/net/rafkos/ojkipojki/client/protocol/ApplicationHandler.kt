@@ -7,6 +7,8 @@ import net.rafkos.ojkipojki.client.view.InitializationProgressDialog
 import net.rafkos.ojkipojki.client.view.MainWindow
 import net.rafkos.ojkipojki.client.view.action.CommandDebouncer
 import net.rafkos.ojkipojki.client.application.SpriteBagDirectoryLoader
+import net.rafkos.ojkipojki.shared.domain.SpriteId
+import java.awt.image.BufferedImage
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.client.view.state.ViewportState
 import net.rafkos.ojkipojki.shared.protocol.command.UploadSpriteBagsCommand
@@ -30,6 +32,7 @@ class ApplicationHandler(
     private var initDialog: InitializationProgressDialog? = null
     private var initDoneTimer: Timer? = null
     private var keyBlocker: KeyEventDispatcher? = null
+    private var pendingImageSeed: Map<SpriteId, Pair<BufferedImage, BufferedImage>>? = null
 
     fun onSessionReady(transmitter: CommandTransmitter) {
         val debouncer = CommandDebouncer(transmitter)
@@ -62,9 +65,16 @@ class ApplicationHandler(
             }
         }
         ClientContext.onSpriteBagsUpdated = {
+            val sprites = ClientContext.stateRepository.findAllSprites()
             SwingUtilities.invokeLater {
                 window.boardPanel.tokenRenderer.clearCache()
+                pendingImageSeed?.let { window.boardPanel.tokenRenderer.seedImages(it) }
+                pendingImageSeed = null
                 window.spriteBagListPanel.refresh()
+                Thread {
+                    val prewarm = window.boardPanel.tokenRenderer.buildPrewarm(sprites)
+                    SwingUtilities.invokeLater { window.boardPanel.tokenRenderer.installPrewarm(prewarm) }
+                }.apply { isDaemon = true; start() }
             }
         }
         ClientContext.onPointersUpdated = {
@@ -92,8 +102,11 @@ class ApplicationHandler(
             window.isVisible = true
         }
 
-        val bags = runBlocking { SpriteBagDirectoryLoader.loadAll() }
-        if (bags.isNotEmpty()) transmitter.transmit(UploadSpriteBagsCommand(bags))
+        val result = runBlocking { SpriteBagDirectoryLoader.loadAll() }
+        if (result.bags.isNotEmpty()) {
+            pendingImageSeed = result.images
+            transmitter.transmit(UploadSpriteBagsCommand(result.bags))
+        }
     }
 
     fun onSessionClosed() {

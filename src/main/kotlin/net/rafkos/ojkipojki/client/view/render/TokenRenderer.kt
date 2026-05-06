@@ -15,6 +15,11 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+data class PrewarmResult(
+    val images: Map<SpriteId, Pair<BufferedImage, BufferedImage>>,
+    val composites: Map<Pair<SpriteId, Boolean>, BufferedImage>,
+)
+
 class TokenRenderer {
     companion object {
         private const val SHADOW_SPREAD = 10
@@ -27,6 +32,33 @@ class TokenRenderer {
     fun clearCache() {
         imageCache.clear()
         compositeCache.clear()
+    }
+
+    fun seedImages(images: Map<SpriteId, Pair<BufferedImage, BufferedImage>>) {
+        images.forEach { (id, pair) ->
+            imageCache[id] = Pair(toFastImage(pair.first), toFastImage(pair.second))
+        }
+    }
+
+    fun buildPrewarm(sprites: List<Sprite>): PrewarmResult {
+        val localImages = mutableMapOf<SpriteId, Pair<BufferedImage, BufferedImage>>()
+        val localComposites = mutableMapOf<Pair<SpriteId, Boolean>, BufferedImage>()
+        for (sprite in sprites) {
+            val images = localImages.getOrPut(sprite.id) {
+                Pair(
+                    toFastImage(ImageIO.read(ByteArrayInputStream(sprite.frontImageBytes))),
+                    toFastImage(ImageIO.read(ByteArrayInputStream(sprite.backImageBytes))),
+                )
+            }
+            localComposites[sprite.id to false] = buildCompositeFrom(false, images)
+            localComposites[sprite.id to true]  = buildCompositeFrom(true, images)
+        }
+        return PrewarmResult(localImages, localComposites)
+    }
+
+    fun installPrewarm(result: PrewarmResult) {
+        imageCache.putAll(result.images)
+        compositeCache.putAll(result.composites)
     }
 
     private fun toFastImage(src: BufferedImage): BufferedImage {
@@ -44,8 +76,11 @@ class TokenRenderer {
             Pair(front, back)
         }
 
-    private fun buildComposite(sprite: Sprite, flipped: Boolean): BufferedImage {
-        val (front, back) = getImages(sprite)
+    private fun buildComposite(sprite: Sprite, flipped: Boolean): BufferedImage =
+        buildCompositeFrom(flipped, getImages(sprite))
+
+    private fun buildCompositeFrom(flipped: Boolean, images: Pair<BufferedImage, BufferedImage>): BufferedImage {
+        val (front, back) = images
         val image = if (flipped) back else front
         val w = front.width
         val h = front.height

@@ -10,8 +10,13 @@ import java.io.File
 import javax.imageio.ImageIO
 import kotlinx.coroutines.*
 
+data class SpriteBagLoadResult(
+    val bag: SpriteBag,
+    val images: Map<SpriteId, Pair<BufferedImage, BufferedImage>>,
+)
+
 object SpriteLoader {
-    suspend fun loadSprites(directory: File, dispatcher: CoroutineDispatcher = Dispatchers.Default): List<SpriteBag> = coroutineScope {
+    suspend fun loadSprites(directory: File, dispatcher: CoroutineDispatcher = Dispatchers.Default): List<SpriteBagLoadResult> = coroutineScope {
 
         val filesByBagId = directory.listFiles { f ->
             f.isFile && f.extension.lowercase() in listOf("png", "jpg", "jpeg")
@@ -40,18 +45,22 @@ object SpriteLoader {
                 val backImage  = ImageIO.read(backFile)
                 val maskImage  = ImageIO.read(maskFile)
 
-                val sprites = extractSprites(spriteBagId, frontImage, backImage, maskImage, dispatcher)
+                val loaded = extractSprites(spriteBagId, frontImage, backImage, maskImage, dispatcher)
 
-                SpriteBag(
-                    id = spriteBagId,
-                    groupName = directory.name,
-                    sprites = sprites
+                SpriteBagLoadResult(
+                    bag = SpriteBag(
+                        id = spriteBagId,
+                        groupName = directory.name,
+                        sprites = loaded.map { it.sprite },
+                    ),
+                    images = loaded.associate { it.sprite.id to Pair(it.front, it.back) },
                 )
             }
         }.awaitAll().filterNotNull()
     }
 
     private data class BBox(var minX: Int, var maxX: Int, var minY: Int, var maxY: Int)
+    private data class LoadedSprite(val sprite: Sprite, val front: BufferedImage, val back: BufferedImage)
 
     private suspend fun extractSprites(
         bagId: SpriteBagId,
@@ -59,7 +68,7 @@ object SpriteLoader {
         backImage: BufferedImage,
         maskImage: BufferedImage,
         dispatcher: CoroutineDispatcher,
-    ): List<Sprite> = coroutineScope {
+    ): List<LoadedSprite> = coroutineScope {
 
         val width  = maskImage.width
         val height = maskImage.height
@@ -100,10 +109,14 @@ object SpriteLoader {
                     bb.minX, bb.minY, cropW, cropH
                 )
 
-                Sprite(
-                    id = spriteId,
-                    frontImageBytes = croppedFront.toPngBytes(),
-                    backImageBytes = croppedBack.toPngBytes(),
+                LoadedSprite(
+                    sprite = Sprite(
+                        id = spriteId,
+                        frontImageBytes = croppedFront.toPngBytes(),
+                        backImageBytes = croppedBack.toPngBytes(),
+                    ),
+                    front = croppedFront,
+                    back = croppedBack,
                 )
             }
         }.awaitAll()

@@ -88,8 +88,8 @@ class BoardActions(
     }
 
     fun refreshBags() {
-        val bags = runBlocking { SpriteBagDirectoryLoader.loadAll() }
-        transmitter.transmit(UploadSpriteBagsCommand(bags))
+        val result = runBlocking { SpriteBagDirectoryLoader.loadAll() }
+        transmitter.transmit(UploadSpriteBagsCommand(result.bags))
     }
 
     fun flip() {
