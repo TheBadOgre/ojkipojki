@@ -62,7 +62,7 @@ class MainWindow(
         boardPanel.addMouseMotionListener(pointerSender)
 
         val spawnHandler = SpriteBagSpawnHandler(transmitter, viewportState, boardPanel, stateRepository)
-        val actions = BoardActions(stateRepository, selectionState, transmitter, debouncer)
+        val actions = BoardActions(stateRepository, selectionState, transmitter, debouncer, tokenAnimator)
 
         spriteBagListPanel = SpriteBagListPanel(spawnHandler, stateRepository)
 

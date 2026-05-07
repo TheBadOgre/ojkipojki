@@ -5,6 +5,7 @@ import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.protocol.command.CommandTransmitter
 import net.rafkos.ojkipojki.client.application.SpriteBagDirectoryLoader
 import net.rafkos.ojkipojki.client.view.state.SelectionState
+import net.rafkos.ojkipojki.client.view.state.TokenAnimator
 import net.rafkos.ojkipojki.shared.domain.Index
 import net.rafkos.ojkipojki.shared.domain.Position
 import net.rafkos.ojkipojki.shared.domain.Rotation
@@ -21,6 +22,7 @@ class BoardActions(
     private val selectionState: SelectionState,
     private val transmitter: CommandTransmitter,
     private val debouncer: CommandDebouncer,
+    private val tokenAnimator: TokenAnimator,
 ) {
     fun selectAll() = selectionState.replaceWith(stateRepository.findAllTokens().map { it.id })
     fun deselectAll() = selectionState.clear()
@@ -29,7 +31,9 @@ class BoardActions(
         val adjustments = selectionState.selectedIds().mapNotNull { id ->
             val token = stateRepository.findTokenById(id) ?: return@mapNotNull null
             if (token.locked) return@mapNotNull null
-            MoveTokensCommand.TokenIdAndPosition(id, null, Rotation((token.rotation.degrees + 60.0) % 360.0), null, null)
+            val newRotation = Rotation((token.rotation.degrees + 60.0) % 360.0)
+            tokenAnimator.updateDragRotationIfPresent(id, newRotation.degrees)
+            MoveTokensCommand.TokenIdAndPosition(id, null, newRotation, null, null)
         }
         if (adjustments.isNotEmpty()) transmitter.transmit(MoveTokensCommand(adjustments))
     }

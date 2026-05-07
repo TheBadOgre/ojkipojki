@@ -19,17 +19,19 @@ class TokenAnimator {
     private data class VisualState(var x: Double, var y: Double, var rotation: Double)
     private data class FlipAnim(val horizontal: Boolean, var progress: Double = 0.0, val targetFlipped: Boolean)
 
-    private val states       = mutableMapOf<TokenId, VisualState>()
-    private val immediateIds = mutableSetOf<TokenId>()
-    private val dragOverride = mutableMapOf<TokenId, VisualState>()
-    private val knownFlipped = mutableMapOf<TokenId, Boolean>()
-    private val flipAnims    = mutableMapOf<TokenId, FlipAnim>()
+    private val states              = mutableMapOf<TokenId, VisualState>()
+    private val immediateIds        = mutableSetOf<TokenId>()
+    private val dragOverride        = mutableMapOf<TokenId, VisualState>()
+    private val dragRotationTargets = mutableMapOf<TokenId, Double>()
+    private val knownFlipped        = mutableMapOf<TokenId, Boolean>()
+    private val flipAnims           = mutableMapOf<TokenId, FlipAnim>()
 
     fun syncWithTokens(tokens: List<Token>) {
         val live = tokens.map { it.id }.toSet()
         states.keys.retainAll(live)
         knownFlipped.keys.retainAll(live)
         flipAnims.keys.retainAll(live)
+        dragRotationTargets.keys.retainAll(live)
 
         for (token in tokens) {
             if (token.id !in states) {
@@ -57,8 +59,17 @@ class TokenAnimator {
             if (token.id in immediateIds) {
                 val drag = dragOverride[token.id]
                 if (drag != null) {
-                    s.x        = drag.x
-                    s.y        = drag.y
+                    s.x = drag.x
+                    s.y = drag.y
+                    val target = dragRotationTargets[token.id]
+                    if (target != null) {
+                        val dr = shortestDelta(drag.rotation, target)
+                        drag.rotation += dr * FACTOR
+                        if (abs(dr) < 0.5) {
+                            drag.rotation = target
+                            dragRotationTargets.remove(token.id)
+                        }
+                    }
                     s.rotation = drag.rotation
                 } else {
                     s.x        = token.position.x.toDouble()
@@ -123,19 +134,29 @@ class TokenAnimator {
 
     fun setDragRotation(id: TokenId, rotation: Double) {
         val existing = dragOverride[id]
-        if (existing != null) existing.rotation = rotation
-        else dragOverride[id] = VisualState(states[id]?.x ?: 0.0, states[id]?.y ?: 0.0, rotation)
+        if (existing != null) {
+            existing.rotation = rotation
+            dragRotationTargets.remove(id)
+        } else {
+            dragOverride[id] = VisualState(states[id]?.x ?: 0.0, states[id]?.y ?: 0.0, rotation)
+        }
+    }
+
+    fun updateDragRotationIfPresent(id: TokenId, rotation: Double) {
+        if (dragOverride[id] != null) dragRotationTargets[id] = rotation
     }
 
     fun setImmediate(ids: Collection<TokenId>) {
         immediateIds.clear()
         immediateIds.addAll(ids)
         dragOverride.keys.retainAll(ids.toSet())
+        dragRotationTargets.keys.retainAll(ids.toSet())
     }
 
     fun clearImmediate() {
         immediateIds.clear()
         dragOverride.clear()
+        dragRotationTargets.clear()
     }
 
     private fun shortestDelta(from: Double, to: Double): Double {
