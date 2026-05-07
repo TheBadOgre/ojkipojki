@@ -28,4 +28,10 @@ class ModelRepository {
     fun saveToken(model: TokenModel) { tokens[model.id] = model }
     fun deleteToken(id: TokenId) { tokens.remove(id) }
     fun deleteAllTokens() { tokens.clear() }
+
+    fun missingBagIds(): Set<SpriteBagId> {
+        val present = spriteBags.keys.toSet()
+        val referenced = tokens.values.map { it.spriteId.spriteBagId }.toSet()
+        return referenced - present
+    }
 }

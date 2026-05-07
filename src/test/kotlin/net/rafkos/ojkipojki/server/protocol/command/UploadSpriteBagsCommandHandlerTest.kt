@@ -6,6 +6,7 @@ import net.rafkos.ojkipojki.server.support.serverContextFixture
 import net.rafkos.ojkipojki.shared.domain.*
 import net.rafkos.ojkipojki.shared.protocol.command.UploadSpriteBagsCommand
 import net.rafkos.ojkipojki.shared.protocol.event.*
+import net.rafkos.ojkipojki.shared.protocol.event.MissingSpriteBagsEvent
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -91,5 +92,37 @@ class UploadSpriteBagsCommandHandlerTest {
         assertTrue(types.contains(TokensSyncEvent::class)) { "Missing TokensSyncEvent" }
         assertTrue(types.contains(SpriteBagsUpdatedEvent::class)) { "Missing SpriteBagsUpdatedEvent" }
         assertEquals(2, types.count { it == GameInitializationEvent::class }) { "Expected 2 GameInitializationEvents" }
+    }
+
+    @Test
+    fun `handle broadcasts MissingSpriteBagsEvent after upsert`() {
+        handler.handle(UploadSpriteBagsCommand(listOf(bag("dice"))))
+
+        val captor = argumentCaptor<Event>()
+        verify(fixture.eventBroadcastService, atLeast(1)).broadcast(captor.capture())
+
+        assertTrue(captor.allValues.any { it is MissingSpriteBagsEvent }) {
+            "Expected MissingSpriteBagsEvent to be broadcast"
+        }
+    }
+
+    @Test
+    fun `handle broadcasts MissingSpriteBagsEvent with empty ids when uploaded bag was previously missing`() {
+        val bagId = SpriteBagId("dice")
+        fixture.modelRepository.saveToken(TokenModel().also {
+            it.id = TokenId(UUID.randomUUID())
+            it.spriteId = SpriteId(bagId, 1, 0, 0)
+        })
+
+        handler.handle(UploadSpriteBagsCommand(listOf(bag("dice", sprite("dice", 1)))))
+
+        val captor = argumentCaptor<Event>()
+        verify(fixture.eventBroadcastService, atLeast(1)).broadcast(captor.capture())
+
+        val missingEvents = captor.allValues.filterIsInstance<MissingSpriteBagsEvent>()
+        assertTrue(missingEvents.isNotEmpty())
+        assertTrue(missingEvents.last().ids.isEmpty()) {
+            "Last MissingSpriteBagsEvent should have empty ids after bag was uploaded"
+        }
     }
 }

@@ -1,6 +1,7 @@
 package net.rafkos.ojkipojki.server.protocol.command
 
 import net.rafkos.ojkipojki.server.ServerContext
+import net.rafkos.ojkipojki.server.application.MissingSpriteBagsBroadcaster
 import net.rafkos.ojkipojki.server.model.SpriteBagModel
 import net.rafkos.ojkipojki.shared.protocol.Handler
 import net.rafkos.ojkipojki.shared.protocol.command.UploadSpriteBagsCommand
@@ -40,5 +41,6 @@ class UploadSpriteBagsCommandHandler : Handler<UploadSpriteBagsCommand> {
         ServerContext.eventBroadcastService.broadcast(GameInitializationEvent(Status.IN_PROGRESS, "initialization.receivingSprites", 0.2))
         ServerContext.eventBroadcastService.broadcast(SpriteBagsUpdatedEvent(spriteBags))
         ServerContext.eventBroadcastService.broadcast(GameInitializationEvent(Status.DONE, "initialization.finished", 1.0))
+        MissingSpriteBagsBroadcaster.broadcast()
     }
 }

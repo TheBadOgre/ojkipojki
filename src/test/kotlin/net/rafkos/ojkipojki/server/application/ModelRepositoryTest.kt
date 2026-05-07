@@ -3,6 +3,7 @@ package net.rafkos.ojkipojki.server.application
 import net.rafkos.ojkipojki.server.model.SpriteBagModel
 import net.rafkos.ojkipojki.server.model.TokenModel
 import net.rafkos.ojkipojki.shared.domain.SpriteBagId
+import net.rafkos.ojkipojki.shared.domain.SpriteId
 import net.rafkos.ojkipojki.shared.domain.TokenId
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -86,5 +87,36 @@ class ModelRepositoryTest {
         repo.saveToken(first)
         repo.saveToken(second)
         assertSame(second, repo.findTokenById(id))
+    }
+
+    @Test
+    fun `missingBagIds returns empty when no tokens`() {
+        assertEquals(emptySet<SpriteBagId>(), repo.missingBagIds())
+    }
+
+    @Test
+    fun `missingBagIds returns empty when all referenced bags present`() {
+        val bagId = SpriteBagId("dice")
+        repo.saveSpriteBag(SpriteBagModel().apply { id = bagId })
+        val token = TokenModel().also { it.id = TokenId(UUID.randomUUID()); it.spriteId = SpriteId(bagId, 1, 0, 0) }
+        repo.saveToken(token)
+        assertEquals(emptySet<SpriteBagId>(), repo.missingBagIds())
+    }
+
+    @Test
+    fun `missingBagIds returns referenced bags absent from repo`() {
+        val bagId = SpriteBagId("missing")
+        val token = TokenModel().also { it.id = TokenId(UUID.randomUUID()); it.spriteId = SpriteId(bagId, 1, 0, 0) }
+        repo.saveToken(token)
+        assertEquals(setOf(bagId), repo.missingBagIds())
+    }
+
+    @Test
+    fun `missingBagIds deduplicates ids referenced by multiple tokens`() {
+        val bagId = SpriteBagId("dup")
+        repeat(3) { i ->
+            repo.saveToken(TokenModel().also { it.id = TokenId(UUID.randomUUID()); it.spriteId = SpriteId(bagId, i, 0, 0) })
+        }
+        assertEquals(setOf(bagId), repo.missingBagIds())
     }
 }

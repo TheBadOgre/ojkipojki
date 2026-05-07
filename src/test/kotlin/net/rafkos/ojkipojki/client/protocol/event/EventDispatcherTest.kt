@@ -15,6 +15,7 @@ class EventDispatcherTest {
         PointersUpdatedEvent::class,
         ConnectedClientsUpdateEvent::class,
         GameInitializationEvent::class,
+        MissingSpriteBagsEvent::class,
     )
 
     @Test

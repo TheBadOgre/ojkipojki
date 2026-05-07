@@ -1,6 +1,7 @@
 package net.rafkos.ojkipojki.server.protocol
 
 import net.rafkos.ojkipojki.server.ServerContext
+import net.rafkos.ojkipojki.server.application.MissingSpriteBagsBroadcaster
 import net.rafkos.ojkipojki.server.protocol.command.CommandReceiver
 import net.rafkos.ojkipojki.server.protocol.event.EventTransmitter
 import net.rafkos.ojkipojki.shared.protocol.event.ConnectedClientsUpdateEvent
@@ -32,6 +33,7 @@ class ClientSessionManager : ClientConnectionListener {
 
         ServerContext.eventBroadcastService.broadcast(GameInitializationEvent(Status.IN_PROGRESS, "initialization.receivingSprites", 0.1))
         ServerContext.eventBroadcastService.broadcast(SpriteBagsUpdatedEvent(ServerContext.modelRepository.findAllSpriteBags().map { it.toState() }), clientId)
+        MissingSpriteBagsBroadcaster.broadcastTo(clientId)
 
         ServerContext.eventBroadcastService.broadcast(GameInitializationEvent(Status.IN_PROGRESS, "initialization.receivingTokens", 0.5))
         ServerContext.eventBroadcastService.broadcast(TokensSyncEvent(ServerContext.modelRepository.findAllTokens().map { it.toState() }), clientId)

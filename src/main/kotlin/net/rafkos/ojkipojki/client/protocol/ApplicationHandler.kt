@@ -1,17 +1,12 @@
 package net.rafkos.ojkipojki.client.protocol
 
-import kotlinx.coroutines.runBlocking
 import net.rafkos.ojkipojki.client.ClientContext
 import net.rafkos.ojkipojki.client.protocol.command.CommandTransmitter
 import net.rafkos.ojkipojki.client.view.InitializationProgressDialog
 import net.rafkos.ojkipojki.client.view.MainWindow
 import net.rafkos.ojkipojki.client.view.action.CommandDebouncer
-import net.rafkos.ojkipojki.client.application.SpriteBagDirectoryLoader
-import net.rafkos.ojkipojki.shared.domain.SpriteId
-import java.awt.image.BufferedImage
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.client.view.state.ViewportState
-import net.rafkos.ojkipojki.shared.protocol.command.UploadSpriteBagsCommand
 import net.rafkos.ojkipojki.shared.protocol.event.GameInitializationEvent
 import java.awt.Cursor
 import java.awt.KeyboardFocusManager
@@ -32,10 +27,10 @@ class ApplicationHandler(
     private var initDialog: InitializationProgressDialog? = null
     private var initDoneTimer: Timer? = null
     private var keyBlocker: KeyEventDispatcher? = null
-    private var pendingImageSeed: Map<SpriteId, Pair<BufferedImage, BufferedImage>>? = null
 
     fun onSessionReady(transmitter: CommandTransmitter) {
         val debouncer = CommandDebouncer(transmitter)
+        ClientContext.commandTransmitter = transmitter
 
         val window = MainWindow(serverHost, ClientContext.stateRepository, selectionState, viewportState, debouncer, transmitter)
         mainWindow = window
@@ -68,9 +63,10 @@ class ApplicationHandler(
             val sprites = ClientContext.stateRepository.findAllSprites()
             SwingUtilities.invokeLater {
                 window.boardPanel.tokenRenderer.clearCache()
-                pendingImageSeed?.let { window.boardPanel.tokenRenderer.seedImages(it) }
-                pendingImageSeed = null
+                val localImages = ClientContext.localSpriteBagRegistry.images()
+                if (localImages.isNotEmpty()) window.boardPanel.tokenRenderer.seedImages(localImages)
                 window.spriteBagListPanel.refresh()
+                window.localSpriteBagListPanel.refresh()
                 Thread {
                     val prewarm = window.boardPanel.tokenRenderer.buildPrewarm(sprites)
                     SwingUtilities.invokeLater { window.boardPanel.tokenRenderer.installPrewarm(prewarm) }
@@ -101,12 +97,6 @@ class ApplicationHandler(
             lockUI(window, dialog)
             window.isVisible = true
         }
-
-        val result = runBlocking { SpriteBagDirectoryLoader.loadAll() }
-        if (result.bags.isNotEmpty()) {
-            pendingImageSeed = result.images
-            transmitter.transmit(UploadSpriteBagsCommand(result.bags))
-        }
     }
 
     fun onSessionClosed() {
@@ -121,6 +111,7 @@ class ApplicationHandler(
                 JOptionPane.ERROR_MESSAGE,
             )
             win.dispose()
+            ClientContext.commandTransmitter = null
             System.exit(1)
         }
     }

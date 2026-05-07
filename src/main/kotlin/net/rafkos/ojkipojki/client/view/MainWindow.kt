@@ -9,6 +9,7 @@ import net.rafkos.ojkipojki.client.view.action.SpriteBagSpawnHandler
 import net.rafkos.ojkipojki.client.view.input.BoardMouseController
 import net.rafkos.ojkipojki.client.view.input.BoardWheelController
 import net.rafkos.ojkipojki.client.view.panel.BoardPanel
+import net.rafkos.ojkipojki.client.view.panel.LocalSpriteBagListPanel
 import net.rafkos.ojkipojki.client.view.panel.SpriteBagListPanel
 import net.rafkos.ojkipojki.client.view.panel.StatusBarPanel
 import net.rafkos.ojkipojki.client.view.panel.ToolbarPanel
@@ -23,8 +24,11 @@ import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.Insets
 import java.awt.event.ActionEvent
+import javax.swing.JLabel
+import javax.swing.JSlider
 import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
+import javax.swing.BorderFactory
 import javax.swing.AbstractAction
 import javax.swing.JButton
 import javax.swing.JComponent
@@ -45,6 +49,7 @@ class MainWindow(
 
     val boardPanel: BoardPanel
     val spriteBagListPanel: SpriteBagListPanel
+    val localSpriteBagListPanel: LocalSpriteBagListPanel
     val toolbarPanel: ToolbarPanel
     val statusBarPanel: StatusBarPanel
     val tokenAnimator: TokenAnimator = TokenAnimator()
@@ -65,6 +70,7 @@ class MainWindow(
         val actions = BoardActions(stateRepository, selectionState, transmitter, debouncer, tokenAnimator)
 
         spriteBagListPanel = SpriteBagListPanel(spawnHandler, stateRepository)
+        localSpriteBagListPanel = LocalSpriteBagListPanel(stateRepository, actions::uploadLocalBag, actions::uploadAllLocal)
 
         val mouseController = BoardMouseController(boardPanel, stateRepository, selectionState, viewportState, debouncer, tokenRenderer, tokenAnimator, onRmbClick = actions::flip)
         val wheelController = BoardWheelController(boardPanel, viewportState, selectionState, stateRepository, debouncer)
@@ -93,14 +99,30 @@ class MainWindow(
             override fun getMinimumSize(): Dimension = Dimension(stripPanel.preferredSize.width, 0)
         }
         sidebarContainer.add(stripPanel, BorderLayout.WEST)
-        sidebarContainer.add(spriteBagListPanel, BorderLayout.CENTER)
+        val sidebarSplit = JSplitPane(JSplitPane.VERTICAL_SPLIT, spriteBagListPanel, localSpriteBagListPanel)
+        sidebarSplit.resizeWeight = 0.66
+        sidebarSplit.isContinuousLayout = true
+        sidebarContainer.add(sidebarSplit, BorderLayout.CENTER)
+
+        val sizeSlider = JSlider(24, 128, 64)
+        val sliderPanel = JPanel(BorderLayout(4, 0))
+        sliderPanel.border = BorderFactory.createEmptyBorder(4, 6, 4, 6)
+        sliderPanel.add(JLabel(LocaleService.get("spritebag.size")), BorderLayout.WEST)
+        sliderPanel.add(sizeSlider, BorderLayout.CENTER)
+        sidebarContainer.add(sliderPanel, BorderLayout.SOUTH)
+        sizeSlider.addChangeListener {
+            spriteBagListPanel.previewSize = sizeSlider.value
+            localSpriteBagListPanel.previewSize = sizeSlider.value
+            spriteBagListPanel.rebuild()
+            localSpriteBagListPanel.rebuild()
+        }
 
         val splitPane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, boardPanel, sidebarContainer)
         splitPane.resizeWeight = 1.0
-        splitPane.dividerLocation = 1200 - 286
+        splitPane.dividerLocation = 1200 - 372
 
         var sidebarExpanded = true
-        var lastDividerLocation = 1200 - 286
+        var lastDividerLocation = 1200 - 372
 
         toggleBtn.addActionListener {
             if (sidebarExpanded) {

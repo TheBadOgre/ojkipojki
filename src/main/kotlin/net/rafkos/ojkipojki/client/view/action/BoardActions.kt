@@ -1,11 +1,12 @@
 package net.rafkos.ojkipojki.client.view.action
 
 import kotlinx.coroutines.runBlocking
+import net.rafkos.ojkipojki.client.ClientContext
 import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.protocol.command.CommandTransmitter
-import net.rafkos.ojkipojki.client.application.SpriteBagDirectoryLoader
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.client.view.state.TokenAnimator
+import net.rafkos.ojkipojki.shared.domain.SpriteBag
 import net.rafkos.ojkipojki.shared.domain.Index
 import net.rafkos.ojkipojki.shared.domain.Position
 import net.rafkos.ojkipojki.shared.domain.Rotation
@@ -23,6 +24,7 @@ class BoardActions(
     private val transmitter: CommandTransmitter,
     private val debouncer: CommandDebouncer,
     private val tokenAnimator: TokenAnimator,
+    private val confirmer: OverwriteConfirmer = SwingOverwriteConfirmer(),
 ) {
     fun selectAll() = selectionState.replaceWith(stateRepository.findAllTokens().map { it.id })
     fun deselectAll() = selectionState.clear()
@@ -92,8 +94,29 @@ class BoardActions(
     }
 
     fun refreshBags() {
-        val result = runBlocking { SpriteBagDirectoryLoader.loadAll() }
-        transmitter.transmit(UploadSpriteBagsCommand(result.bags))
+        runBlocking { ClientContext.localSpriteBagRegistry.reload() }
+        val stateIds = stateRepository.findAllSpriteBags().map { it.id }.toSet()
+        val toResend = ClientContext.localSpriteBagRegistry.bags().filter { it.id in stateIds }
+        if (toResend.isNotEmpty()) transmitter.transmit(UploadSpriteBagsCommand(toResend))
+    }
+
+    fun uploadLocalBag(bag: SpriteBag) {
+        val hasConflict = stateRepository.findSpriteBagById(bag.id) != null
+        if (hasConflict && !confirmer.confirmOverwrite(listOf(bag.id.id))) return
+        transmitter.transmit(UploadSpriteBagsCommand(listOf(bag)))
+    }
+
+    fun uploadAllLocal() {
+        val stateIds = stateRepository.findAllSpriteBags().map { it.id }.toSet()
+        val allLocal = ClientContext.localSpriteBagRegistry.bags()
+        val conflicts = allLocal.filter { it.id in stateIds }
+        val nonConflicts = allLocal.filter { it.id !in stateIds }
+        if (conflicts.isNotEmpty() && !confirmer.confirmOverwrite(conflicts.map { it.id.id })) {
+            if (nonConflicts.isNotEmpty()) transmitter.transmit(UploadSpriteBagsCommand(nonConflicts))
+            return
+        }
+        val toUpload = conflicts + nonConflicts
+        if (toUpload.isNotEmpty()) transmitter.transmit(UploadSpriteBagsCommand(toUpload))
     }
 
     fun flip() {

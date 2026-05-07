@@ -2,6 +2,7 @@ package net.rafkos.ojkipojki.server.protocol
 
 import net.rafkos.ojkipojki.server.support.serverContextFixture
 import net.rafkos.ojkipojki.shared.protocol.event.ConnectedClientsUpdateEvent
+import net.rafkos.ojkipojki.shared.protocol.event.SpriteBagsUpdatedEvent
 import net.rafkos.ojkipojki.support.await
 import net.rafkos.ojkipojki.support.socketPair
 import org.junit.jupiter.api.AfterEach
@@ -124,5 +125,24 @@ class ClientSessionManagerTest {
 
         assertEquals(2, manager.getAllClientIds().size)
         assertTrue(manager.getAllClientIds().containsAll(setOf("c1", "c3")))
+    }
+
+    @Test
+    fun `onClientConnected sends MissingSpriteBagsEvent unicast after SpriteBagsUpdatedEvent`() {
+        connect("c1")
+
+        val eventCaptor = argumentCaptor<net.rafkos.ojkipojki.shared.protocol.event.Event>()
+        val clientCaptor = argumentCaptor<String>()
+        verify(fixture.eventBroadcastService, atLeast(1)).broadcast(eventCaptor.capture(), clientCaptor.capture())
+
+        val unicastEvents = eventCaptor.allValues
+        val unicastClients = clientCaptor.allValues
+
+        val spriteBagsIdx = unicastEvents.indexOfFirst { it is SpriteBagsUpdatedEvent }
+        val missingIdx = unicastEvents.indexOfFirst { it is net.rafkos.ojkipojki.shared.protocol.event.MissingSpriteBagsEvent }
+
+        assertTrue(missingIdx >= 0) { "MissingSpriteBagsEvent not sent unicast" }
+        assertTrue(missingIdx > spriteBagsIdx) { "MissingSpriteBagsEvent must come after SpriteBagsUpdatedEvent" }
+        assertEquals("c1", unicastClients[missingIdx])
     }
 }

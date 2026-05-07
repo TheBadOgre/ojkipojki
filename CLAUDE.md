@@ -53,6 +53,16 @@ update StateRepository
 
 `SpriteLoader` reads `{id}_front.png`, `{id}_back.png`, `{id}_mask.png`. Each non-black RGB in mask = one sprite (becomes `SpriteId.r/g/b`). Loader bounding-boxes each color region, crops front/back, masks other sprites transparent.
 
+## Sprite bag handling/sending
+
+Lazy upload. Client does NOT push local bags on connect. Two sets:
+- **Server state** (`StateRepository.spriteBags`) = bags actually uploaded. Top sidebar panel shows these. Drag/spawn sources from here.
+- **Local library** (`LocalSpriteBagRegistry`, scanned from disk) = bags client could upload. Bottom sidebar panel shows these with a per-bag Upload button + "Upload All".
+
+On connect server sends `SpriteBagsUpdatedEvent` (current state) then `MissingSpriteBagsEvent(ids)` (bag ids referenced by tokens but absent in repo). Client filters local library by those ids and silently autouploads matches. Broadcast on every state change so half-coverage self-heals as more clients connect.
+
+Manual upload (button) confirms overwrite when id already in state. Autoupload via missing event never overwrites (id missing by definition). `BoardActions.refreshBags` (F5) reloads local dir and resends only bags whose id ∈ state. Tokens whose `spriteId` lacks a sprite in `StateRepository` render pink "MISSING SPRITE" placeholder; still selectable/movable/deletable.
+
 ## UI architecture (`client/view/`)
 
 Swing. State in `state/`, render in `render/`, input in `input/`. **No logic in panels.**

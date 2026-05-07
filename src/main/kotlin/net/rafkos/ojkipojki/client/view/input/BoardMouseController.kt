@@ -229,8 +229,12 @@ class BoardMouseController(
             .sortedBy { it.index.value }
             .reversed()
             .firstOrNull { token ->
-                val sprite = stateRepository.findSpriteById(token.spriteId) ?: return@firstOrNull false
-                tokenRenderer.hitTest(token, sprite, worldX, worldY)
+                val sprite = stateRepository.findSpriteById(token.spriteId)
+                if (sprite == null) {
+                    tokenRenderer.missingHitTest(token, worldX, worldY)
+                } else {
+                    tokenRenderer.hitTest(token, sprite, worldX, worldY)
+                }
             }
 
     private fun captureInitialPositions() {

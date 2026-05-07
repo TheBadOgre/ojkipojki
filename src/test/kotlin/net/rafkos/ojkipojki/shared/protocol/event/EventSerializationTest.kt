@@ -1,6 +1,7 @@
 package net.rafkos.ojkipojki.shared.protocol.event
 
 import net.rafkos.ojkipojki.shared.domain.*
+import net.rafkos.ojkipojki.shared.protocol.event.MissingSpriteBagsEvent
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -93,5 +94,12 @@ class EventSerializationTest {
     fun `GameInitializationEvent accepts boundary values 0 and 1`() {
         assertEquals(0.0, GameInitializationEvent(GameInitializationEvent.Status.IN_PROGRESS, "msg", 0.0).progress)
         assertEquals(1.0, GameInitializationEvent(GameInitializationEvent.Status.DONE, "msg", 1.0).progress)
+    }
+
+    @Test
+    fun `MissingSpriteBagsEvent round-trip`() {
+        val event = MissingSpriteBagsEvent(setOf(SpriteBagId("dice"), SpriteBagId("cards")))
+        val result = roundTrip(event)
+        assertEquals(event.ids, result.ids)
     }
 }

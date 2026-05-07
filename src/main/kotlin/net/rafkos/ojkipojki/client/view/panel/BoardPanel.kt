@@ -69,8 +69,18 @@ class BoardPanel(
 
         val tokens = lastTokens.sortedBy { it.index.value }
         for (token in tokens) {
-            val sprite = stateRepository.findSpriteById(token.spriteId) ?: continue
+            val sprite = stateRepository.findSpriteById(token.spriteId)
             val visual = tokenAnimator.visualize(token)
+
+            if (sprite == null) {
+                val screenCx = (visual.position.x + ox) * zoom + pw / 2
+                val screenCy = (visual.position.y + oy) * zoom + ph / 2
+                val screenR = sqrt((TokenRenderer.MISSING_W.toDouble().pow(2) + TokenRenderer.MISSING_H.toDouble().pow(2))) / 2 * zoom
+                if (screenCx + screenR < 0 || screenCx - screenR > pw ||
+                    screenCy + screenR < 0 || screenCy - screenR > ph) continue
+                tokenRenderer.drawMissing(g2, visual, selectionState.contains(token.id))
+                continue
+            }
 
             val (frontImg, _) = tokenRenderer.getImages(sprite)
             val screenCx = (visual.position.x + ox) * zoom + pw / 2

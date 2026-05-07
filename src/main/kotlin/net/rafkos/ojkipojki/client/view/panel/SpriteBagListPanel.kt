@@ -29,7 +29,6 @@ import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JScrollPane
-import javax.swing.JSlider
 import javax.swing.Scrollable
 import javax.swing.SwingConstants
 import javax.swing.TransferHandler
@@ -53,22 +52,19 @@ class SpriteBagListPanel(
         override fun getScrollableBlockIncrement(r: Rectangle, o: Int, d: Int) = 64
     }
 
-    private val sizeSlider = JSlider(24, 128, 64)
+    var previewSize = 64
 
     init {
-        preferredSize = Dimension(286, 0)
+        preferredSize = Dimension(372, 0)
+
+        val headerLabel = JLabel(LocaleService.get("spritebag.gamePanel.title"))
+        headerLabel.font = headerLabel.font.deriveFont(Font.BOLD, 12f)
+        headerLabel.border = BorderFactory.createEmptyBorder(4, 6, 4, 6)
+        add(headerLabel, BorderLayout.NORTH)
 
         val scroll = JScrollPane(contentPanel)
         scroll.horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
         add(scroll, BorderLayout.CENTER)
-
-        val sliderPanel = JPanel(BorderLayout(4, 0))
-        sliderPanel.border = BorderFactory.createEmptyBorder(4, 6, 4, 6)
-        sliderPanel.add(JLabel(LocaleService.get("spritebag.size")), BorderLayout.WEST)
-        sliderPanel.add(sizeSlider, BorderLayout.CENTER)
-        add(sliderPanel, BorderLayout.SOUTH)
-
-        sizeSlider.addChangeListener { rebuild() }
     }
 
     fun refresh() {
@@ -78,7 +74,6 @@ class SpriteBagListPanel(
 
     fun rebuild() {
         contentPanel.removeAll()
-        val previewSize = sizeSlider.value
         val tokensBySpriteId = stateRepository.findAllTokens().groupBy { it.spriteId }
 
         val bagsByGroup = stateRepository.findAllSpriteBags()

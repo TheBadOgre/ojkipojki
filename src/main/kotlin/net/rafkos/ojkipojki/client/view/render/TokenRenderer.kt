@@ -3,6 +3,7 @@ package net.rafkos.ojkipojki.client.view.render
 import net.rafkos.ojkipojki.shared.domain.Sprite
 import net.rafkos.ojkipojki.shared.domain.SpriteId
 import net.rafkos.ojkipojki.shared.domain.Token
+import net.rafkos.ojkipojki.shared.locale.LocaleService
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Graphics2D
@@ -24,6 +25,8 @@ class TokenRenderer {
     companion object {
         private const val SHADOW_SPREAD = 10
         private const val EDGE_SPREAD   = 4
+        const val MISSING_W = 80
+        const val MISSING_H = 80
     }
 
     private val imageCache     = mutableMapOf<SpriteId, Pair<BufferedImage, BufferedImage>>()
@@ -190,5 +193,54 @@ class TokenRenderer {
         val lx = dx * cos(rad) - dy * sin(rad)
         val ly = dx * sin(rad) + dy * cos(rad)
         return lx >= -w / 2.0 && lx <= w / 2.0 && ly >= -h / 2.0 && ly <= h / 2.0
+    }
+
+    fun missingHitTest(token: Token, worldX: Double, worldY: Double): Boolean {
+        val dx = worldX - token.position.x
+        val dy = worldY - token.position.y
+        val rad = -Math.toRadians(token.rotation.degrees)
+        val lx = dx * cos(rad) - dy * sin(rad)
+        val ly = dx * sin(rad) + dy * cos(rad)
+        return lx >= -MISSING_W / 2.0 && lx <= MISSING_W / 2.0 &&
+               ly >= -MISSING_H / 2.0 && ly <= MISSING_H / 2.0
+    }
+
+    fun drawMissing(g2: Graphics2D, token: Token, selected: Boolean) {
+        val w = MISSING_W
+        val h = MISSING_H
+
+        val saved = g2.transform
+        val at = AffineTransform()
+        at.translate(token.position.x.toDouble(), token.position.y.toDouble())
+        at.rotate(Math.toRadians(token.rotation.degrees))
+        at.translate(-w / 2.0, -h / 2.0)
+        g2.transform(at)
+
+        g2.color = Color(255, 105, 180)
+        g2.fillRect(0, 0, w, h)
+
+        g2.color = Color.BLACK
+        val fm = g2.fontMetrics
+        val text = LocaleService.get("spritebag.missing")
+        val tx = (w - fm.stringWidth(text)) / 2
+        val ty = (h - fm.height) / 2 + fm.ascent
+        g2.drawString(text, tx, ty)
+
+        val prevStroke = g2.stroke
+        val prevColor = g2.color
+        val currentAt = g2.transform
+        val det = abs(currentAt.scaleX * currentAt.scaleY - currentAt.shearX * currentAt.shearY)
+        val pw = (1.0 / sqrt(det)).toFloat()
+
+        if (selected) {
+            g2.color = Color(80, 160, 255)
+            g2.stroke = BasicStroke(pw, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
+                floatArrayOf(pw * 6, pw * 4), 0f)
+            g2.drawRect(0, 0, w, h)
+        }
+
+        g2.stroke = prevStroke
+        g2.color = prevColor
+        g2.transform = saved
     }
 }

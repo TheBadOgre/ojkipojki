@@ -5,6 +5,7 @@ import net.rafkos.ojkipojki.shared.protocol.Handler
 import net.rafkos.ojkipojki.shared.protocol.event.ConnectedClientsUpdateEvent
 import net.rafkos.ojkipojki.shared.protocol.event.Event
 import net.rafkos.ojkipojki.shared.protocol.event.GameInitializationEvent
+import net.rafkos.ojkipojki.shared.protocol.event.MissingSpriteBagsEvent
 import net.rafkos.ojkipojki.shared.protocol.event.PointersUpdatedEvent
 import net.rafkos.ojkipojki.shared.protocol.event.SomeTokensUpdatedEvent
 import net.rafkos.ojkipojki.shared.protocol.event.SpriteBagsUpdatedEvent
@@ -18,5 +19,6 @@ class EventDispatcher : Dispatcher<Event>(
         PointersUpdatedEvent::class to PointersUpdatedEventHandler() as Handler<Event>,
         ConnectedClientsUpdateEvent::class to ConnectedClientsUpdateEventHandler() as Handler<Event>,
         GameInitializationEvent::class to GameInitializationEventHandler() as Handler<Event>,
+        MissingSpriteBagsEvent::class to MissingSpriteBagsEventHandler() as Handler<Event>,
     )
 )

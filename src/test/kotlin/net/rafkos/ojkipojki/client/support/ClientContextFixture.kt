@@ -1,6 +1,7 @@
 package net.rafkos.ojkipojki.client.support
 
 import net.rafkos.ojkipojki.client.ClientContext
+import net.rafkos.ojkipojki.client.application.LocalSpriteBagRegistry
 import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.protocol.event.EventDispatcher
 
@@ -10,6 +11,8 @@ fun clientContextFixture(): ClientContextFixture {
     val repo = StateRepository()
     ClientContext.stateRepository = repo
     ClientContext.eventDispatcher = EventDispatcher()
+    ClientContext.localSpriteBagRegistry = LocalSpriteBagRegistry()
+    ClientContext.commandTransmitter = null
     ClientContext.onTokensUpdated = null
     ClientContext.onTokensCountChanged = null
     ClientContext.onSpriteBagsUpdated = null

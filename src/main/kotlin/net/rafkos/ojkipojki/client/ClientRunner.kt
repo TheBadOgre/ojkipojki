@@ -1,5 +1,7 @@
 package net.rafkos.ojkipojki.client
 
+import kotlinx.coroutines.runBlocking
+import net.rafkos.ojkipojki.client.application.LocalSpriteBagRegistry
 import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.protocol.ApplicationHandler
 import net.rafkos.ojkipojki.client.protocol.ClientSession
@@ -15,6 +17,7 @@ object ClientRunner {
     fun startClient(serverHost: String, serverPort: Int) {
         log.info("Starting client, connecting to $serverHost:$serverPort")
 
+        ClientContext.localSpriteBagRegistry = LocalSpriteBagRegistry().also { runBlocking { it.reload() } }
         ClientContext.eventDispatcher = EventDispatcher()
         ClientContext.stateRepository = StateRepository()
 
