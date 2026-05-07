@@ -2,6 +2,7 @@ package net.rafkos.ojkipojki.client.view.panel
 
 import net.rafkos.ojkipojki.client.ClientContext
 import net.rafkos.ojkipojki.client.application.StateRepository
+import net.rafkos.ojkipojki.client.view.icon.Icons
 import net.rafkos.ojkipojki.shared.domain.SpriteBag
 import net.rafkos.ojkipojki.shared.domain.SpriteBagId
 import net.rafkos.ojkipojki.shared.domain.SpriteId
@@ -18,9 +19,10 @@ class LocalSpriteBagListPanel(
     private val stateRepository: StateRepository,
     private val onUpload: (SpriteBag) -> Unit,
     private val onUploadAll: () -> Unit,
+    private val onRefresh: () -> Unit,
 ) : JPanel(BorderLayout()) {
 
-    var previewSize = 32
+    var previewSize = 64
 
     private val imageCache = mutableMapOf<SpriteId, BufferedImage?>()
 
@@ -38,11 +40,16 @@ class LocalSpriteBagListPanel(
         headerBar.border = BorderFactory.createEmptyBorder(4, 6, 4, 6)
         val titleLabel = JLabel(LocaleService.get("spritebag.localPanel.title"))
         titleLabel.font = titleLabel.font.deriveFont(Font.BOLD, 12f)
-        val uploadAllBtn = JButton(LocaleService.get("spritebag.uploadAll"))
-        uploadAllBtn.isFocusPainted = false
-        uploadAllBtn.addActionListener { onUploadAll() }
+
+        val refreshBtn = iconButton(Icons.refreshBags, LocaleService.get("toolbar.refreshBags")) { onRefresh() }
+        val uploadAllBtn = iconButton(Icons.uploadAllBags, LocaleService.get("spritebag.uploadAll")) { onUploadAll() }
+        val btnPanel = JPanel(FlowLayout(FlowLayout.RIGHT, 2, 0))
+        btnPanel.isOpaque = false
+        btnPanel.add(refreshBtn)
+        btnPanel.add(uploadAllBtn)
+
         headerBar.add(titleLabel, BorderLayout.CENTER)
-        headerBar.add(uploadAllBtn, BorderLayout.EAST)
+        headerBar.add(btnPanel, BorderLayout.EAST)
         add(headerBar, BorderLayout.NORTH)
 
         val scroll = JScrollPane(contentPanel)
@@ -111,10 +118,7 @@ class LocalSpriteBagListPanel(
             nameLabel.foreground = Color(80, 160, 80)
         }
 
-        val uploadBtn = JButton(LocaleService.get("spritebag.upload"))
-        uploadBtn.isFocusPainted = false
-        uploadBtn.margin = Insets(2, 6, 2, 6)
-        uploadBtn.addActionListener { onUpload(bag) }
+        val uploadBtn = iconButton(Icons.uploadBag, LocaleService.get("spritebag.upload")) { onUpload(bag) }
 
         val row = JPanel(FlowLayout(FlowLayout.LEFT, 4, 2))
         row.isOpaque = false
@@ -123,6 +127,15 @@ class LocalSpriteBagListPanel(
         row.add(iconPanel)
         row.add(nameLabel)
         return row
+    }
+
+    private fun iconButton(icon: javax.swing.ImageIcon, tooltip: String, action: () -> Unit): JButton {
+        val b = JButton(icon)
+        b.toolTipText = tooltip
+        b.isFocusPainted = false
+        b.margin = Insets(2, 2, 2, 2)
+        b.addActionListener { action() }
+        return b
     }
 
     private fun getImage(id: SpriteId, bytes: ByteArray): BufferedImage? =

@@ -63,8 +63,6 @@ class ToolbarPanel(
         add(lockBtn)
         addSeparator()
 
-        // Sprites presence
-        always(Icons.refreshBags, LocaleService.get("toolbar.refreshBags"))           { actions.refreshBags() }
         cond({ actions.hasUnlockedSelected() },
             Icons.delete,      LocaleService.get("toolbar.delete"))                  { actions.delete() }
 
