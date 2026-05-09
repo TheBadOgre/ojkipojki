@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "net.rafkos.ojkipojki"
-version = "0.3.1-SNAPSHOT"
+version = "0.4.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
