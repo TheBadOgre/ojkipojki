@@ -82,6 +82,7 @@ class MainWindowController(
             win.tokenAnimator.syncWithTokens(tokens)
             selectionState.pruneAgainst(tokens)
             win.toolbarPanel.refresh()
+            win.boardPanel.markTokensDirty()
         }
     }
 
@@ -89,6 +90,7 @@ class MainWindowController(
         val win = mainWindow ?: return
         SwingUtilities.invokeLater {
             win.spriteBagListPanel.rebuild()
+            win.boardPanel.markTokensDirty()
         }
     }
 
@@ -113,6 +115,7 @@ class MainWindowController(
         val win = mainWindow ?: return
         SwingUtilities.invokeLater {
             win.pointerAnimator.syncWithPointers(pointers)
+            win.boardPanel.markPointersDirty()
         }
     }
 

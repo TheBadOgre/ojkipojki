@@ -142,6 +142,10 @@ class BoardMouseController(
             moved = true
         }
 
+        if (mode == Mode.DRAG_TOKENS || mode == Mode.RMB_ROTATE || mode == Mode.MMB_PAN) {
+            boardPanel.markInteracting()
+        }
+
         when (mode) {
             Mode.DRAG_TOKENS -> {
                 val screenDx = (e.x - pressScreenX).toDouble()

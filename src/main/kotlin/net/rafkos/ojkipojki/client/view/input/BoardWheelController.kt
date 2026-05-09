@@ -19,6 +19,7 @@ class BoardWheelController(
 ) : MouseWheelListener {
 
     override fun mouseWheelMoved(e: MouseWheelEvent) {
+        boardPanel.markInteracting()
         if (e.isControlDown) {
             if (selectionState.selectedIds().isEmpty()) return
             val delta = if (e.wheelRotation < 0) 10.0 else -10.0

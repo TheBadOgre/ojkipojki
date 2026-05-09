@@ -5,7 +5,7 @@ import net.rafkos.ojkipojki.shared.protocol.command.MoveTokensCommand
 import net.rafkos.ojkipojki.shared.domain.TokenId
 import javax.swing.Timer
 
-class CommandDebouncer(private val transmitter: CommandTransmitter, intervalMs: Long = 20) {
+class CommandDebouncer(private val transmitter: CommandTransmitter, intervalMs: Long = 50) {
     private val pending = mutableMapOf<TokenId, MoveTokensCommand.TokenIdAndPosition>()
     private val timer = Timer(intervalMs.toInt()) { flush() }
 

@@ -53,12 +53,15 @@ class TokenAnimator {
         }
     }
 
-    fun tick(tokens: List<Token>) {
+    /** Returns true if any visual state changed (animation still active). */
+    fun tick(tokens: List<Token>): Boolean {
+        var changed = false
         for (token in tokens) {
             val s = states[token.id] ?: continue
             if (token.id in immediateIds) {
                 val drag = dragOverride[token.id]
                 if (drag != null) {
+                    if (s.x != drag.x || s.y != drag.y) changed = true
                     s.x = drag.x
                     s.y = drag.y
                     val target = dragRotationTargets[token.id]
@@ -69,12 +72,18 @@ class TokenAnimator {
                             drag.rotation = target
                             dragRotationTargets.remove(token.id)
                         }
+                        changed = true
                     }
+                    if (s.rotation != drag.rotation) changed = true
                     s.rotation = drag.rotation
                 } else {
-                    s.x        = token.position.x.toDouble()
-                    s.y        = token.position.y.toDouble()
-                    s.rotation = token.rotation.degrees
+                    val tx = token.position.x.toDouble()
+                    val ty = token.position.y.toDouble()
+                    val tr = token.rotation.degrees
+                    if (s.x != tx || s.y != ty || s.rotation != tr) changed = true
+                    s.x = tx
+                    s.y = ty
+                    s.rotation = tr
                 }
                 continue
             }
@@ -82,9 +91,13 @@ class TokenAnimator {
             val ty = token.position.y.toDouble()
             val tr = token.rotation.degrees
 
-            s.x += (tx - s.x) * FACTOR
-            s.y += (ty - s.y) * FACTOR
+            val dx = tx - s.x
+            val dy = ty - s.y
             val dr = shortestDelta(s.rotation, tr)
+            if (abs(dx) >= 0.5 || abs(dy) >= 0.5 || abs(dr) >= 0.5) changed = true
+
+            s.x += dx * FACTOR
+            s.y += dy * FACTOR
             s.rotation += dr * FACTOR
 
             if (abs(s.x - tx) < 0.5) s.x        = tx
@@ -92,12 +105,14 @@ class TokenAnimator {
             if (abs(dr)       < 0.5) s.rotation = tr
         }
 
+        if (flipAnims.isNotEmpty()) changed = true
         val iter = flipAnims.entries.iterator()
         while (iter.hasNext()) {
             val e = iter.next()
             e.value.progress = (e.value.progress + FLIP_STEP).coerceAtMost(1.0)
             if (e.value.progress >= 1.0) iter.remove()
         }
+        return changed
     }
 
     fun visualize(token: Token): Token {

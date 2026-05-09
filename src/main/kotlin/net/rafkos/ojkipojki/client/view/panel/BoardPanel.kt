@@ -18,6 +18,7 @@ import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.util.Random
 import javax.swing.JPanel
+import javax.swing.SwingUtilities
 import javax.swing.Timer
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -37,31 +38,77 @@ class BoardPanel(
     var dragRectOverlay: DragRectOverlay? = null
     private var lastTokens: List<Token> = emptyList()
     private var lastPointers: List<Pointer> = emptyList()
+    @Volatile private var sortedTokensDirty: Boolean = true
+    @Volatile private var interacting: Boolean = false
+    @Volatile private var pointersDirty: Boolean = true
+    @Volatile private var animating: Boolean = true
+    private var interactionEndTimer: Timer? = null
     @Volatile private var tileVariants: Array<BufferedImage> = buildVariants(backgroundColorState.color, SHARED_EDGES)
 
     init {
         background = backgroundColorState.color
         backgroundColorState.addListener { c ->
             background = c
-            Thread { tileVariants = buildVariants(c, SHARED_EDGES) }.start()
+            Thread {
+                tileVariants = buildVariants(c, SHARED_EDGES)
+                SwingUtilities.invokeLater { repaint() }
+            }.start()
         }
         preferredSize = Dimension(800, 600)
         isFocusable = true
 
         Timer(16) {
-            lastTokens = stateRepository.findAllTokens()
-            tokenAnimator.tick(lastTokens)
-            lastPointers = stateRepository.findAllPointers()
-            pointerAnimator.tick(lastPointers)
+            if (sortedTokensDirty) {
+                lastTokens = stateRepository.findAllTokens().sortedBy { it.index.value }
+                sortedTokensDirty = false
+                animating = true
+            }
+            if (pointersDirty) {
+                lastPointers = stateRepository.findAllPointers()
+                pointersDirty = false
+                animating = true
+            }
+            if (!animating && !interacting) return@Timer
+            val tokenChanged = tokenAnimator.tick(lastTokens)
+            val pointerChanged = pointerAnimator.tick(lastPointers)
+            animating = tokenChanged || pointerChanged
             repaint()
         }.start()
+    }
+
+    /** Called by state listener when token set/positions/indexes change.
+     *  Triggers re-snapshot + re-sort + animation kick on next tick. */
+    fun markTokensDirty() {
+        sortedTokensDirty = true
+        animating = true
+    }
+
+    /** Called by state listener when pointer set changes. Refreshes pointer snapshot. */
+    fun markPointersDirty() {
+        pointersDirty = true
+        animating = true
+    }
+
+    /** Marks the view as actively interacting (pan/drag/zoom/rotate).
+     *  While set, paint uses NEAREST interpolation and disables antialiasing
+     *  for big throughput gain on many tokens. Auto-clears 150ms after last call. */
+    fun markInteracting() {
+        interacting = true
+        interactionEndTimer?.stop()
+        interactionEndTimer = Timer(150) {
+            interacting = false
+            repaint()
+        }.apply { isRepeats = false; start() }
     }
 
     override fun paintComponent(g: Graphics) {
         super.paintComponent(g)
         val g2 = g as Graphics2D
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,      RenderingHints.VALUE_ANTIALIAS_ON)
-        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,     RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        g2.setRenderingHint(
+            RenderingHints.KEY_ANTIALIASING,
+            if (interacting) RenderingHints.VALUE_ANTIALIAS_OFF else RenderingHints.VALUE_ANTIALIAS_ON,
+        )
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
 
         val savedTransform = g2.transform
@@ -75,8 +122,7 @@ class BoardPanel(
         val pw = width.toDouble()
         val ph = height.toDouble()
 
-        val tokens = lastTokens.sortedBy { it.index.value }
-        for (token in tokens) {
+        for (token in lastTokens) {
             val sprite = stateRepository.findSpriteById(token.spriteId)
             val visual = tokenAnimator.visualize(token)
 
@@ -171,7 +217,7 @@ class BoardPanel(
         fun tileVariant(col: Int, row: Int): Int {
             var h = col * 1664525 xor row * 1013904223
             h = h xor (h ushr 16)
-            h *= 0x45d9f3b.toInt()
+            h *= 0x45d9f3b
             h = h xor (h ushr 16)
             return Math.floorMod(h, VARIANT_COUNT)
         }

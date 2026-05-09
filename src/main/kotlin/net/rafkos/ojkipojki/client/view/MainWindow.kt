@@ -84,7 +84,7 @@ class MainWindow(
 
         setupKeyBindings(boardPanel, actions, viewportState)
 
-        toolbarPanel = ToolbarPanel(actions, selectionState, stateRepository, backgroundColorState)
+        toolbarPanel = ToolbarPanel(actions, selectionState, backgroundColorState)
 
         statusBarPanel = StatusBarPanel(serverIp)
 
@@ -170,6 +170,7 @@ class MainWindow(
                     val step = 50.0 / viewportState.zoom
                     viewportState.offsetX += dx * step
                     viewportState.offsetY += dy * step
+                    boardPanel.markInteracting()
                     boardPanel.repaint()
                 }
             })

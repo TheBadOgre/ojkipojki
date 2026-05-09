@@ -1,6 +1,5 @@
 package net.rafkos.ojkipojki.client.view.panel
 
-import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.view.action.BoardActions
 import net.rafkos.ojkipojki.client.view.icon.Icons
 import net.rafkos.ojkipojki.client.view.state.BackgroundColorState
@@ -22,9 +21,8 @@ import javax.swing.JToolBar
 
 class ToolbarPanel(
     private val actions: BoardActions,
-    private val selectionState: SelectionState,
-    private val stateRepository: StateRepository,
-    private val backgroundColorState: BackgroundColorState,
+    selectionState: SelectionState,
+    private val backgroundColorState: BackgroundColorState
 ) : JToolBar(JToolBar.VERTICAL) {
 
     private val lockBtn = JButton()
@@ -99,7 +97,9 @@ class ToolbarPanel(
             btn.margin = Insets(3, 3, 3, 3)
             btn.isSelected = color == backgroundColorState.color
             bgGroup.add(btn)
-            btn.addActionListener { backgroundColorState.setColor(color) }
+            btn.addActionListener {
+                backgroundColorState.setColor(color)
+            }
             add(btn)
         }
     }
