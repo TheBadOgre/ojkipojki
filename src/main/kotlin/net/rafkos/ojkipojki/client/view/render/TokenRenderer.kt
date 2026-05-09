@@ -9,7 +9,9 @@ import java.awt.Color
 import java.awt.Graphics2D
 import java.awt.geom.AffineTransform
 import java.awt.image.BufferedImage
+import java.awt.image.DataBufferInt
 import java.io.ByteArrayInputStream
+import java.util.concurrent.ConcurrentHashMap
 import javax.imageio.ImageIO
 import kotlin.math.abs
 import kotlin.math.cos
@@ -27,6 +29,7 @@ class TokenRenderer {
         private const val EDGE_SPREAD   = 4
         const val MISSING_W = 80
         const val MISSING_H = 80
+        private val OFFSETS = intArrayOf(-1, 0, 1)
     }
 
     private val imageCache     = mutableMapOf<SpriteId, Pair<BufferedImage, BufferedImage>>()
@@ -44,17 +47,19 @@ class TokenRenderer {
     }
 
     fun buildPrewarm(sprites: List<Sprite>): PrewarmResult {
-        val localImages = mutableMapOf<SpriteId, Pair<BufferedImage, BufferedImage>>()
-        val localComposites = mutableMapOf<Pair<SpriteId, Boolean>, BufferedImage>()
-        for (sprite in sprites) {
-            val images = localImages.getOrPut(sprite.id) {
+        val localImages    = ConcurrentHashMap<SpriteId, Pair<BufferedImage, BufferedImage>>()
+        val localComposites = ConcurrentHashMap<Pair<SpriteId, Boolean>, BufferedImage>()
+        sprites.parallelStream().forEach { sprite ->
+            val images = localImages.computeIfAbsent(sprite.id) {
                 Pair(
                     toFastImage(ImageIO.read(ByteArrayInputStream(sprite.frontImageBytes))),
                     toFastImage(ImageIO.read(ByteArrayInputStream(sprite.backImageBytes))),
                 )
             }
-            localComposites[sprite.id to false] = buildCompositeFrom(false, images)
-            localComposites[sprite.id to true]  = buildCompositeFrom(true, images)
+            val (front, back) = images
+            val baseLayer = buildBaseLayer(front)
+            localComposites[sprite.id to false] = compositeWithMain(baseLayer, front, front.width, front.height)
+            localComposites[sprite.id to true]  = compositeWithMain(baseLayer, back,  front.width, front.height)
         }
         return PrewarmResult(localImages, localComposites)
     }
@@ -79,59 +84,88 @@ class TokenRenderer {
             Pair(front, back)
         }
 
-    private fun buildComposite(sprite: Sprite, flipped: Boolean): BufferedImage =
-        buildCompositeFrom(flipped, getImages(sprite))
+    private fun buildComposite(sprite: Sprite, flipped: Boolean): BufferedImage {
+        val (front, back) = getImages(sprite)
+        val baseLayer = buildBaseLayer(front)
+        return compositeWithMain(baseLayer, if (flipped) back else front, front.width, front.height)
+    }
 
-    private fun buildCompositeFrom(flipped: Boolean, images: Pair<BufferedImage, BufferedImage>): BufferedImage {
-        val (front, back) = images
-        val image = if (flipped) back else front
-        val w = front.width
-        val h = front.height
-        val frontPx = front.getRGB(0, 0, w, h, null, 0, w)
-
-        // Shadow: alpha-only black, 36% of source alpha (original 45% × 0.8)
-        val shadowPx = IntArray(w * h)
-        for (i in frontPx.indices) {
-            val a = (frontPx[i] ushr 24) and 0xFF
-            if (a > 10) shadowPx[i] = (a * 0.18).toInt() shl 24
-        }
-        val shadowImg = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE)
-        shadowImg.setRGB(0, 0, w, h, shadowPx, 0, w)
-
-        // Dark edge: 35% brightness, 80% of source alpha (20% more transparent)
-        val edgePx = IntArray(w * h)
-        for (i in frontPx.indices) {
-            val argb = frontPx[i]
-            val a = (argb ushr 24) and 0xFF
-            if (a > 0) {
-                val r = (((argb ushr 16) and 0xFF) * 0.35).toInt()
-                val g = (((argb ushr 8)  and 0xFF) * 0.35).toInt()
-                val b = (( argb          and 0xFF) * 0.35).toInt()
-                edgePx[i] = ((a * 0.8).toInt() shl 24) or (r shl 16) or (g shl 8) or b
-            }
-        }
-        val edgeImg = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE)
-        edgeImg.setRGB(0, 0, w, h, edgePx, 0, w)
-
+    // Scatter shadow + dark edge from front into a (w+2ss)×(h+2ss) IntArray.
+    // Shared between flipped and non-flipped composites — front pixels only, no main image.
+    private fun buildBaseLayer(front: BufferedImage): IntArray {
+        val w  = front.width
+        val h  = front.height
         val ss = SHADOW_SPREAD
         val es = EDGE_SPREAD
-        val composite = BufferedImage(w + 2 * ss, h + 2 * ss, BufferedImage.TYPE_INT_ARGB_PRE)
-        val cg = composite.createGraphics()
-        try {
-            // Shadow: 8 positions at ±ss around center — equal halo all sides
-            for (dx in intArrayOf(-ss, 0, ss)) for (dy in intArrayOf(-ss, 0, ss)) {
-                if (dx == 0 && dy == 0) continue
-                cg.drawImage(shadowImg, ss + dx, ss + dy, null)
+        val cw = w + 2 * ss
+        val outData = IntArray(cw * (h + 2 * ss))
+        val src = (front.raster.dataBuffer as DataBufferInt).data
+
+        for (sy in 0 until h) {
+            val srcRowOff = sy * w
+            for (sx in 0 until w) {
+                val px   = src[srcRowOff + sx]
+                val aPre = (px ushr 24) and 0xFF
+                if (aPre == 0) continue
+
+                // Shadow: black at ~18% of alpha — premultiplied black = alpha channel only
+                val shadowA = aPre * 46 / 255  // 46/255 ≈ 0.18
+                if (shadowA > 0) {
+                    val shadowPx = shadowA shl 24
+                    for (di in OFFSETS) for (dj in OFFSETS) {
+                        if (di == 0 && dj == 0) continue
+                        val idx = (ss + sy + dj * ss) * cw + (ss + sx + di * ss)
+                        outData[idx] = srcOverPre(shadowPx, outData[idx])
+                    }
+                }
+
+                // Dark edge: 35% brightness × 80% alpha = 0.28 factor on premultiplied components
+                val edgePx = ((aPre * 204 / 255) shl 24) or
+                             (((px ushr 16) and 0xFF) * 71 / 255 shl 16) or
+                             (((px ushr 8)  and 0xFF) * 71 / 255 shl 8)  or
+                              ((px         and 0xFF) * 71 / 255)
+                for (di in OFFSETS) for (dj in OFFSETS) {
+                    if (di == 0 && dj == 0) continue
+                    val idx = (ss + sy + dj * es) * cw + (ss + sx + di * es)
+                    outData[idx] = srcOverPre(edgePx, outData[idx])
+                }
             }
-            // Dark edge: 8 positions at ±es — equal stroke all sides
-            for (dx in intArrayOf(-es, 0, es)) for (dy in intArrayOf(-es, 0, es)) {
-                if (dx == 0 && dy == 0) continue
-                cg.drawImage(edgeImg, ss + dx, ss + dy, null)
+        }
+        return outData
+    }
+
+    // Copy base layer into final BufferedImage, then blend main image (front or back) on top.
+    private fun compositeWithMain(baseLayer: IntArray, image: BufferedImage, w: Int, h: Int): BufferedImage {
+        val ss = SHADOW_SPREAD
+        val cw = w + 2 * ss
+        val composite = BufferedImage(cw, h + 2 * ss, BufferedImage.TYPE_INT_ARGB_PRE)
+        val outData  = (composite.raster.dataBuffer as DataBufferInt).data
+        System.arraycopy(baseLayer, 0, outData, 0, outData.size)
+
+        val mainData = (image.raster.dataBuffer as DataBufferInt).data
+        for (sy in 0 until h) {
+            val srcOff = sy * w
+            val dstOff = (ss + sy) * cw + ss
+            for (sx in 0 until w) {
+                val mp = mainData[srcOff + sx]
+                if ((mp ushr 24) == 0) continue
+                outData[dstOff + sx] = srcOverPre(mp, outData[dstOff + sx])
             }
-            // Main image centered
-            cg.drawImage(image, ss, ss, null)
-        } finally { cg.dispose() }
+        }
         return composite
+    }
+
+    // Porter-Duff SRC_OVER for TYPE_INT_ARGB_PRE (premultiplied).
+    // outC_pre = srcC_pre + dstC_pre * (1 - srcA)  — no unpremultiply needed.
+    private fun srcOverPre(src: Int, dst: Int): Int {
+        val sa = (src ushr 24) and 0xFF
+        if (sa == 0) return dst
+        if (sa >= 255) return src
+        val inv = 255 - sa
+        return ((sa + (dst ushr 24 and 0xFF) * inv / 255) shl 24) or
+               (((src ushr 16 and 0xFF) + (dst ushr 16 and 0xFF) * inv / 255) shl 16) or
+               (((src ushr 8  and 0xFF) + (dst ushr 8  and 0xFF) * inv / 255) shl 8)  or
+                ((src         and 0xFF) + (dst         and 0xFF) * inv / 255)
     }
 
     fun draw(g2: Graphics2D, token: Token, sprite: Sprite, selected: Boolean, locked: Boolean,
