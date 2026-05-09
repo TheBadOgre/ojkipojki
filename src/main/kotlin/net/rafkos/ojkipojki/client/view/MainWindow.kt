@@ -14,6 +14,7 @@ import net.rafkos.ojkipojki.client.view.panel.SpriteBagListPanel
 import net.rafkos.ojkipojki.client.view.panel.StatusBarPanel
 import net.rafkos.ojkipojki.client.view.panel.ToolbarPanel
 import net.rafkos.ojkipojki.client.view.render.TokenRenderer
+import net.rafkos.ojkipojki.client.view.state.BackgroundColorState
 import net.rafkos.ojkipojki.client.view.state.PointerAnimator
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.client.view.state.TokenAnimator
@@ -61,7 +62,8 @@ class MainWindow(
         setSize(1200, 800)
 
         val tokenRenderer = TokenRenderer()
-        boardPanel = BoardPanel(stateRepository, selectionState, viewportState, tokenRenderer, tokenAnimator, pointerAnimator)
+        val backgroundColorState = BackgroundColorState()
+        boardPanel = BoardPanel(stateRepository, selectionState, viewportState, tokenRenderer, tokenAnimator, pointerAnimator, backgroundColorState)
 
         val pointerSender = PointerCommandSender(transmitter, viewportState, boardPanel)
         boardPanel.addMouseMotionListener(pointerSender)
@@ -82,7 +84,7 @@ class MainWindow(
 
         setupKeyBindings(boardPanel, actions, viewportState)
 
-        toolbarPanel = ToolbarPanel(actions, selectionState, stateRepository)
+        toolbarPanel = ToolbarPanel(actions, selectionState, stateRepository, backgroundColorState)
 
         statusBarPanel = StatusBarPanel(serverIp)
 

@@ -3,23 +3,24 @@ package net.rafkos.ojkipojki.client.view.panel
 import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.view.input.DragRectOverlay
 import net.rafkos.ojkipojki.client.view.render.TokenRenderer
+import net.rafkos.ojkipojki.client.view.state.BackgroundColorState
 import net.rafkos.ojkipojki.client.view.state.PointerAnimator
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.client.view.state.TokenAnimator
 import net.rafkos.ojkipojki.client.view.state.ViewportState
 import net.rafkos.ojkipojki.shared.domain.Pointer
 import net.rafkos.ojkipojki.shared.domain.Token
-import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import java.util.Random
 import javax.swing.JPanel
 import javax.swing.Timer
 import kotlin.math.ceil
 import kotlin.math.floor
-import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -30,14 +31,20 @@ class BoardPanel(
     val tokenRenderer: TokenRenderer,
     val tokenAnimator: TokenAnimator,
     val pointerAnimator: PointerAnimator,
+    val backgroundColorState: BackgroundColorState,
 ) : JPanel() {
 
     var dragRectOverlay: DragRectOverlay? = null
     private var lastTokens: List<Token> = emptyList()
     private var lastPointers: List<Pointer> = emptyList()
+    @Volatile private var tileVariants: Array<BufferedImage> = buildVariants(backgroundColorState.color, SHARED_EDGES)
 
     init {
-        background = Color(35, 35, 35)
+        background = backgroundColorState.color
+        backgroundColorState.addListener { c ->
+            background = c
+            Thread { tileVariants = buildVariants(c, SHARED_EDGES) }.start()
+        }
         preferredSize = Dimension(800, 600)
         isFocusable = true
 
@@ -53,13 +60,14 @@ class BoardPanel(
     override fun paintComponent(g: Graphics) {
         super.paintComponent(g)
         val g2 = g as Graphics2D
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,      RenderingHints.VALUE_ANTIALIAS_ON)
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,     RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
 
         val savedTransform = g2.transform
         g2.transform(viewportState.affineTransform(width, height))
 
-        paintGrid(g2)
+        paintBackground(g2)
 
         val zoom = viewportState.zoom
         val ox = viewportState.offsetX
@@ -109,7 +117,7 @@ class BoardPanel(
         }
     }
 
-    private fun paintGrid(g2: Graphics2D) {
+    private fun paintBackground(g2: Graphics2D) {
         val zoom = viewportState.zoom
         val ox   = viewportState.offsetX
         val oy   = viewportState.offsetY
@@ -121,39 +129,112 @@ class BoardPanel(
         val worldTop    = (-h / 2.0) / zoom - oy
         val worldBottom = ( h / 2.0) / zoom - oy
 
-        val spacing = niceSpacing(20.0 / zoom)
-        val major   = spacing * 5
+        val tiles = tileVariants
+        val tileW = tiles[0].width
+        val tileH = tiles[0].height
+        val startX = (floor(worldLeft / tileW) * tileW).toInt()
+        val startY = (floor(worldTop  / tileH) * tileH).toInt()
+        val endX   = ceil(worldRight  / tileW).toInt() * tileW
+        val endY   = ceil(worldBottom / tileH).toInt() * tileH
 
-        val x0 = (floor(worldLeft   / spacing) * spacing).toInt()
-        val x1 = (ceil (worldRight  / spacing) * spacing).toInt()
-        val y0 = (floor(worldTop    / spacing) * spacing).toInt()
-        val y1 = (ceil (worldBottom / spacing) * spacing).toInt()
-
-        val pixelStroke = BasicStroke((1f / zoom).toFloat())
-        g2.stroke = pixelStroke
-
-        g2.color = Color(45, 45, 45)
-        var xi = x0; while (xi <= x1) { g2.drawLine(xi, y0, xi, y1); xi += spacing }
-        var yi = y0; while (yi <= y1) { g2.drawLine(x0, yi, x1, yi); yi += spacing }
-
-        g2.color = Color(55, 55, 55)
-        xi = (floor(worldLeft / major) * major).toInt()
-        while (xi <= x1) { g2.drawLine(xi, y0, xi, y1); xi += major }
-        yi = (floor(worldTop / major) * major).toInt()
-        while (yi <= y1) { g2.drawLine(x0, yi, x1, yi); yi += major }
-
-        g2.color = Color(65, 65, 65)
-        g2.drawLine(x0, 0, x1, 0)
-        g2.drawLine(0, y0, 0, y1)
+        var ty = startY
+        while (ty < endY) {
+            val row = ty / tileH
+            var tx = startX
+            while (tx < endX) {
+                val col = tx / tileW
+                val variant = tileVariant(col, row)
+                g2.drawImage(tiles[variant], tx, ty, null)
+                tx += tileW
+            }
+            ty += tileH
+        }
     }
 
-    private fun niceSpacing(raw: Double): Int {
-        val mag = 10.0.pow(floor(log10(raw.coerceAtLeast(1.0)))).toInt()
-        val r = raw / mag
-        return when {
-            r < 2.0 -> mag
-            r < 5.0 -> mag * 2
-            else    -> mag * 5
+    companion object {
+        private const val TILE_SIZE = 512
+        private const val VARIANT_COUNT = 8
+
+        // Octave specs: (gridCells, weight). Large-scale weight kept low so
+        // tile boundaries between different variants aren't visually jarring.
+        private val OCTAVE_SPECS = listOf(4 to 0.25, 12 to 0.40, 36 to 0.25, 100 to 0.10)
+
+        // Per octave: [corner, left[1..cells-1], top[1..cells-1]] — shared across all variants.
+        // Shared edges guarantee seamless joins between any two adjacent variants.
+        val SHARED_EDGES: List<DoubleArray> by lazy {
+            val edgeRng = Random(0xBEEFCAFEL)
+            OCTAVE_SPECS.map { (cells, _) ->
+                DoubleArray(2 * cells - 1) { edgeRng.nextDouble() }
+            }
+        }
+
+        fun tileVariant(col: Int, row: Int): Int {
+            var h = col * 1664525 xor row * 1013904223
+            h = h xor (h ushr 16)
+            h *= 0x45d9f3b.toInt()
+            h = h xor (h ushr 16)
+            return Math.floorMod(h, VARIANT_COUNT)
+        }
+
+        fun buildVariants(color: Color, sharedEdges: List<DoubleArray>): Array<BufferedImage> =
+            Array(VARIANT_COUNT) { v -> buildTile(v.toLong(), sharedEdges, color) }
+
+        private fun buildTile(seed: Long, sharedEdges: List<DoubleArray>, color: Color): BufferedImage {
+            val rng = Random(seed xor 0x4F4A4BL)
+
+            fun smooth(t: Double) = t * t * (3.0 - 2.0 * t)
+            fun lerp(a: Double, b: Double, t: Double) = a + (b - a) * t
+
+            val grids = OCTAVE_SPECS.mapIndexed { oi, (cells, _) ->
+                val se = sharedEdges[oi]
+                // se[0]          = corner  (all 4 corners are equal in a seamless tile)
+                // se[1..cells-1] = left/right edge interior values
+                // se[cells..2*cells-2] = top/bottom edge interior values
+                Array(cells + 1) { i ->
+                    DoubleArray(cells + 1) { j ->
+                        val onLeft = j == 0 || j == cells
+                        val onTop  = i == 0 || i == cells
+                        when {
+                            onLeft && onTop -> se[0]
+                            onTop           -> se[cells + j - 1]
+                            onLeft          -> se[i]
+                            else            -> rng.nextDouble()
+                        }
+                    }
+                }
+            }
+
+            val baseR = color.red
+            val baseG = color.green
+            val baseB = color.blue
+            val pixels = IntArray(TILE_SIZE * TILE_SIZE)
+            for (y in 0 until TILE_SIZE) {
+                for (x in 0 until TILE_SIZE) {
+                    var v = 0.0
+                    for ((oi, spec) in OCTAVE_SPECS.withIndex()) {
+                        val (cells, weight) = spec
+                        val grid = grids[oi]
+                        val px = x.toDouble() / TILE_SIZE * cells
+                        val py = y.toDouble() / TILE_SIZE * cells
+                        val ix = px.toInt(); val iy = py.toInt()
+                        val tx = smooth(px - ix); val ty = smooth(py - iy)
+                        v += lerp(
+                            lerp(grid[iy][ix], grid[iy][ix + 1], tx),
+                            lerp(grid[iy + 1][ix], grid[iy + 1][ix + 1], tx),
+                            ty
+                        ) * weight
+                    }
+                    val factor = 0.88 + v * 0.12
+                    val cr = (baseR * factor).toInt().coerceIn(0, 255)
+                    val cg = (baseG * factor).toInt().coerceIn(0, 255)
+                    val cb = (baseB * factor).toInt().coerceIn(0, 255)
+                    pixels[y * TILE_SIZE + x] = (0xFF shl 24) or (cr shl 16) or (cg shl 8) or cb
+                }
+            }
+
+            val img = BufferedImage(TILE_SIZE, TILE_SIZE, BufferedImage.TYPE_INT_RGB)
+            img.setRGB(0, 0, TILE_SIZE, TILE_SIZE, pixels, 0, TILE_SIZE)
+            return img
         }
     }
 }
