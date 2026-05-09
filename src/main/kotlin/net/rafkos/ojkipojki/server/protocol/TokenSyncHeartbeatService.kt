@@ -1,5 +1,6 @@
-package net.rafkos.ojkipojki.server.application
+package net.rafkos.ojkipojki.server.protocol
 
+import net.rafkos.ojkipojki.server.application.ModelRepository
 import net.rafkos.ojkipojki.server.protocol.event.EventBroadcastService
 import net.rafkos.ojkipojki.shared.protocol.event.TokensSyncEvent
 import org.apache.logging.log4j.LogManager

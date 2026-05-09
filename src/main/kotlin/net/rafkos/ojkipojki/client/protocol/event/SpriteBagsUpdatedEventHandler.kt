@@ -10,6 +10,6 @@ class SpriteBagsUpdatedEventHandler : Handler<SpriteBagsUpdatedEvent> {
             ClientContext.stateRepository.saveSpriteBag(bag)
             bag.sprites.forEach { ClientContext.stateRepository.saveSprite(it) }
         }
-        ClientContext.onSpriteBagsUpdated?.invoke()
+        ClientContext.notifier.notifySpriteBagsUpdated()
     }
 }

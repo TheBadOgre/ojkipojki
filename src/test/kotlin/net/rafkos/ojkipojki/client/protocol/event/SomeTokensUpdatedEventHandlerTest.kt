@@ -1,6 +1,7 @@
 package net.rafkos.ojkipojki.client.protocol.event
 
-import net.rafkos.ojkipojki.client.ClientContext
+import net.rafkos.ojkipojki.client.application.ClientStateListener
+import net.rafkos.ojkipojki.client.support.ClientContextFixture
 import net.rafkos.ojkipojki.client.support.clientContextFixture
 import net.rafkos.ojkipojki.shared.domain.*
 import net.rafkos.ojkipojki.shared.protocol.event.SomeTokensUpdatedEvent
@@ -12,7 +13,7 @@ import java.util.UUID
 class SomeTokensUpdatedEventHandlerTest {
 
     private val handler = SomeTokensUpdatedEventHandler()
-    private lateinit var fixture: net.rafkos.ojkipojki.client.support.ClientContextFixture
+    private lateinit var fixture: ClientContextFixture
 
     @BeforeEach
     fun setup() {
@@ -62,9 +63,11 @@ class SomeTokensUpdatedEventHandlerTest {
     }
 
     @Test
-    fun `invokes onTokensUpdated callback exactly once`() {
+    fun `invokes onTokensUpdated listener exactly once`() {
         var count = 0
-        ClientContext.onTokensUpdated = { count++ }
+        fixture.notifier.addListener(object : ClientStateListener {
+            override fun onTokensUpdated() { count++ }
+        })
 
         handler.handle(SomeTokensUpdatedEvent(emptyList()))
 
@@ -76,7 +79,9 @@ class SomeTokensUpdatedEventHandlerTest {
         val id = tokenId()
         fixture.stateRepository.saveToken(token(id))
         var countChangedCalled = false
-        ClientContext.onTokensCountChanged = { countChangedCalled = true }
+        fixture.notifier.addListener(object : ClientStateListener {
+            override fun onTokensCountChanged() { countChangedCalled = true }
+        })
 
         handler.handle(SomeTokensUpdatedEvent(listOf(SomeTokensUpdatedEvent.TokenAction.Update(token(id, x = 99)))))
 
@@ -86,7 +91,9 @@ class SomeTokensUpdatedEventHandlerTest {
     @Test
     fun `invokes onTokensCountChanged when spawning new token`() {
         var countChangedCalled = false
-        ClientContext.onTokensCountChanged = { countChangedCalled = true }
+        fixture.notifier.addListener(object : ClientStateListener {
+            override fun onTokensCountChanged() { countChangedCalled = true }
+        })
 
         handler.handle(SomeTokensUpdatedEvent(listOf(SomeTokensUpdatedEvent.TokenAction.Update(token(tokenId())))))
 
@@ -98,7 +105,9 @@ class SomeTokensUpdatedEventHandlerTest {
         val id = tokenId()
         fixture.stateRepository.saveToken(token(id))
         var countChangedCalled = false
-        ClientContext.onTokensCountChanged = { countChangedCalled = true }
+        fixture.notifier.addListener(object : ClientStateListener {
+            override fun onTokensCountChanged() { countChangedCalled = true }
+        })
 
         handler.handle(SomeTokensUpdatedEvent(listOf(SomeTokensUpdatedEvent.TokenAction.Delete(id))))
 

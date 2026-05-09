@@ -1,6 +1,7 @@
 package net.rafkos.ojkipojki.client.protocol.event
 
-import net.rafkos.ojkipojki.client.ClientContext
+import net.rafkos.ojkipojki.client.application.ClientStateListener
+import net.rafkos.ojkipojki.client.support.ClientContextFixture
 import net.rafkos.ojkipojki.client.support.clientContextFixture
 import net.rafkos.ojkipojki.shared.domain.*
 import net.rafkos.ojkipojki.shared.protocol.event.TokensSyncEvent
@@ -12,7 +13,7 @@ import java.util.UUID
 class TokensSyncEventHandlerTest {
 
     private val handler = TokensSyncEventHandler()
-    private lateinit var fixture: net.rafkos.ojkipojki.client.support.ClientContextFixture
+    private lateinit var fixture: ClientContextFixture
 
     @BeforeEach
     fun setup() {
@@ -45,9 +46,11 @@ class TokensSyncEventHandlerTest {
     }
 
     @Test
-    fun `invokes onTokensUpdated callback exactly once`() {
+    fun `invokes onTokensUpdated listener exactly once`() {
         var count = 0
-        ClientContext.onTokensUpdated = { count++ }
+        fixture.notifier.addListener(object : ClientStateListener {
+            override fun onTokensUpdated() { count++ }
+        })
 
         handler.handle(TokensSyncEvent(emptyList()))
 
@@ -55,9 +58,11 @@ class TokensSyncEventHandlerTest {
     }
 
     @Test
-    fun `invokes onTokensCountChanged callback exactly once`() {
+    fun `invokes onTokensCountChanged listener exactly once`() {
         var count = 0
-        ClientContext.onTokensCountChanged = { count++ }
+        fixture.notifier.addListener(object : ClientStateListener {
+            override fun onTokensCountChanged() { count++ }
+        })
 
         handler.handle(TokensSyncEvent(emptyList()))
 

@@ -2,7 +2,6 @@ package net.rafkos.ojkipojki.client.protocol
 
 import net.rafkos.ojkipojki.client.support.clientContextFixture
 import net.rafkos.ojkipojki.client.protocol.command.CommandTransmitter
-import net.rafkos.ojkipojki.support.await
 import net.rafkos.ojkipojki.support.socketPair
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
@@ -41,33 +40,33 @@ class ClientSessionTest {
 
     @Test
     fun `onConnected calls onSessionReady with non-null transmitter`() {
-        val handler = mock<ApplicationHandler>()
-        val session = ClientSession(handler)
+        val listener = mock<SessionLifecycleListener>()
+        val session = ClientSession(listener)
 
         val (clientSocket, _) = socketPairWithHeader()
 
         session.onConnected(clientSocket)
 
-        verify(handler).onSessionReady(any<CommandTransmitter>())
+        verify(listener).onSessionReady(any<CommandTransmitter>())
     }
 
     @Test
     fun `onDisconnected calls onSessionClosed`() {
-        val handler = mock<ApplicationHandler>()
-        val session = ClientSession(handler)
+        val listener = mock<SessionLifecycleListener>()
+        val session = ClientSession(listener)
 
         val (clientSocket, _) = socketPairWithHeader()
         session.onConnected(clientSocket)
 
         session.onDisconnected()
 
-        verify(handler).onSessionClosed()
+        verify(listener).onSessionClosed()
     }
 
     @Test
     fun `onDisconnected is idempotent`() {
-        val handler = mock<ApplicationHandler>()
-        val session = ClientSession(handler)
+        val listener = mock<SessionLifecycleListener>()
+        val session = ClientSession(listener)
 
         val (clientSocket, _) = socketPairWithHeader()
         session.onConnected(clientSocket)
@@ -78,8 +77,8 @@ class ClientSessionTest {
 
     @Test
     fun `closing peer socket triggers onSessionClosed via receiver`() {
-        val handler = mock<ApplicationHandler>()
-        val session = ClientSession(handler)
+        val listener = mock<SessionLifecycleListener>()
+        val session = ClientSession(listener)
 
         val (clientSocket, acceptedSocket) = socketPairWithHeader()
         session.onConnected(clientSocket)
@@ -87,6 +86,6 @@ class ClientSessionTest {
         // Close the peer (server side) — EventReceiver will detect EOF and call onDisconnected
         acceptedSocket.close()
 
-        verify(handler, timeout(2000)).onSessionClosed()
+        verify(listener, timeout(2000)).onSessionClosed()
     }
 }

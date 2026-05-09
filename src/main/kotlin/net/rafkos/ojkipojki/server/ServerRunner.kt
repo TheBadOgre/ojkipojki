@@ -6,8 +6,8 @@ import net.rafkos.ojkipojki.server.application.GameLoader
 import net.rafkos.ojkipojki.server.application.persistence.GamePersistence
 import net.rafkos.ojkipojki.server.application.ModelRepository
 import net.rafkos.ojkipojki.server.application.PointerRepository
-import net.rafkos.ojkipojki.server.application.TokenSyncHeartbeatService
 import net.rafkos.ojkipojki.server.protocol.ClientSessionManager
+import net.rafkos.ojkipojki.server.protocol.TokenSyncHeartbeatService
 import net.rafkos.ojkipojki.server.protocol.ConnectionManager
 import net.rafkos.ojkipojki.server.protocol.command.CommandDispatcher
 import net.rafkos.ojkipojki.server.protocol.event.EventBroadcastService

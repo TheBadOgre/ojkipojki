@@ -1,6 +1,7 @@
 package net.rafkos.ojkipojki.client.protocol.event
 
-import net.rafkos.ojkipojki.client.ClientContext
+import net.rafkos.ojkipojki.client.application.ClientStateListener
+import net.rafkos.ojkipojki.client.support.ClientContextFixture
 import net.rafkos.ojkipojki.client.support.clientContextFixture
 import net.rafkos.ojkipojki.shared.domain.Pointer
 import net.rafkos.ojkipojki.shared.protocol.event.PointersUpdatedEvent
@@ -11,7 +12,7 @@ import org.junit.jupiter.api.Test
 class PointersUpdatedEventHandlerTest {
 
     private val handler = PointersUpdatedEventHandler()
-    private lateinit var fixture: net.rafkos.ojkipojki.client.support.ClientContextFixture
+    private lateinit var fixture: ClientContextFixture
 
     @BeforeEach
     fun setup() {
@@ -33,9 +34,11 @@ class PointersUpdatedEventHandlerTest {
     }
 
     @Test
-    fun `invokes onPointersUpdated callback exactly once`() {
+    fun `invokes onPointersUpdated listener exactly once`() {
         var count = 0
-        ClientContext.onPointersUpdated = { count++ }
+        fixture.notifier.addListener(object : ClientStateListener {
+            override fun onPointersUpdated() { count++ }
+        })
 
         handler.handle(PointersUpdatedEvent(emptyList()))
 
@@ -43,8 +46,7 @@ class PointersUpdatedEventHandlerTest {
     }
 
     @Test
-    fun `null callback does not throw`() {
-        ClientContext.onPointersUpdated = null
+    fun `no listener does not throw`() {
         assertDoesNotThrow { handler.handle(PointersUpdatedEvent(emptyList())) }
     }
 }

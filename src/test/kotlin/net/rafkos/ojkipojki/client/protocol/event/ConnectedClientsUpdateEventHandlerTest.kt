@@ -1,6 +1,6 @@
 package net.rafkos.ojkipojki.client.protocol.event
 
-import net.rafkos.ojkipojki.client.ClientContext
+import net.rafkos.ojkipojki.client.application.ClientStateListener
 import net.rafkos.ojkipojki.client.support.clientContextFixture
 import net.rafkos.ojkipojki.shared.protocol.event.ConnectedClientsUpdateEvent
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -11,16 +11,19 @@ import org.junit.jupiter.api.Test
 class ConnectedClientsUpdateEventHandlerTest {
 
     private val handler = ConnectedClientsUpdateEventHandler()
+    private lateinit var fixture: net.rafkos.ojkipojki.client.support.ClientContextFixture
 
     @BeforeEach
     fun setup() {
-        clientContextFixture()
+        fixture = clientContextFixture()
     }
 
     @Test
-    fun `invokes callback with payload count`() {
+    fun `invokes listener with payload count`() {
         var received = -1
-        ClientContext.onConnectedClientsUpdated = { received = it }
+        fixture.notifier.addListener(object : ClientStateListener {
+            override fun onConnectedClientsUpdated(count: Int) { received = count }
+        })
 
         handler.handle(ConnectedClientsUpdateEvent(7))
 
@@ -28,8 +31,7 @@ class ConnectedClientsUpdateEventHandlerTest {
     }
 
     @Test
-    fun `null callback does not throw`() {
-        ClientContext.onConnectedClientsUpdated = null
+    fun `no listener does not throw`() {
         assertDoesNotThrow { handler.handle(ConnectedClientsUpdateEvent(3)) }
     }
 }

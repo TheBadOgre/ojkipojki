@@ -6,7 +6,7 @@ import org.apache.logging.log4j.LogManager
 import java.net.Socket
 
 class ClientSession(
-    private val applicationHandler: ApplicationHandler
+    private val lifecycleListener: SessionLifecycleListener
 ) : ServerConnectionListener {
 
     private var receiver: EventReceiver? = null
@@ -15,7 +15,7 @@ class ClientSession(
     override fun onConnected(socket: Socket) {
         transmitter = CommandTransmitter(socket)
         log.info("Session started — receiver and transmitter ready")
-        applicationHandler.onSessionReady(transmitter!!)
+        lifecycleListener.onSessionReady(transmitter!!)
         receiver = EventReceiver(socket, onDisconnected = { onDisconnected() }).also { it.start() }
     }
 
@@ -24,7 +24,7 @@ class ClientSession(
         receiver = null
         transmitter = null
         log.info("Session torn down")
-        applicationHandler.onSessionClosed()
+        lifecycleListener.onSessionClosed()
     }
 
     companion object {

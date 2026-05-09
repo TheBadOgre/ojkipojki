@@ -6,6 +6,6 @@ import net.rafkos.ojkipojki.shared.protocol.event.ConnectedClientsUpdateEvent
 
 class ConnectedClientsUpdateEventHandler : Handler<ConnectedClientsUpdateEvent> {
     override fun handle(action: ConnectedClientsUpdateEvent) {
-        ClientContext.onConnectedClientsUpdated?.invoke(action.numOfClients)
+        ClientContext.notifier.notifyConnectedClientsUpdated(action.numOfClients)
     }
 }

@@ -21,7 +21,7 @@ class SomeTokensUpdatedEventHandler : Handler<SomeTokensUpdatedEvent> {
                 }
             }
         }
-        ClientContext.onTokensUpdated?.invoke()
-        if (countChanged) ClientContext.onTokensCountChanged?.invoke()
+        ClientContext.notifier.notifyTokensUpdated()
+        if (countChanged) ClientContext.notifier.notifyTokensCountChanged()
     }
 }

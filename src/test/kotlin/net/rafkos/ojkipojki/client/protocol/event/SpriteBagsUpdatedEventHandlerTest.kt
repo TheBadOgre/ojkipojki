@@ -1,5 +1,7 @@
 package net.rafkos.ojkipojki.client.protocol.event
 
+import net.rafkos.ojkipojki.client.application.ClientStateListener
+import net.rafkos.ojkipojki.client.support.ClientContextFixture
 import net.rafkos.ojkipojki.client.support.clientContextFixture
 import net.rafkos.ojkipojki.shared.domain.*
 import net.rafkos.ojkipojki.shared.protocol.event.SpriteBagsUpdatedEvent
@@ -10,7 +12,7 @@ import org.junit.jupiter.api.Test
 class SpriteBagsUpdatedEventHandlerTest {
 
     private val handler = SpriteBagsUpdatedEventHandler()
-    private lateinit var fixture: net.rafkos.ojkipojki.client.support.ClientContextFixture
+    private lateinit var fixture: ClientContextFixture
 
     @BeforeEach
     fun setup() {
@@ -31,9 +33,11 @@ class SpriteBagsUpdatedEventHandlerTest {
     }
 
     @Test
-    fun `invokes onSpriteBagsUpdated callback exactly once`() {
+    fun `invokes onSpriteBagsUpdated listener exactly once`() {
         var count = 0
-        net.rafkos.ojkipojki.client.ClientContext.onSpriteBagsUpdated = { count++ }
+        fixture.notifier.addListener(object : ClientStateListener {
+            override fun onSpriteBagsUpdated() { count++ }
+        })
 
         handler.handle(SpriteBagsUpdatedEvent(listOf(SpriteBag(SpriteBagId("x"), "x", emptyList()))))
 
@@ -41,8 +45,7 @@ class SpriteBagsUpdatedEventHandlerTest {
     }
 
     @Test
-    fun `callback not invoked when null`() {
-        net.rafkos.ojkipojki.client.ClientContext.onSpriteBagsUpdated = null
+    fun `no listener does not throw`() {
         assertDoesNotThrow { handler.handle(SpriteBagsUpdatedEvent(emptyList())) }
     }
 }

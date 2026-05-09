@@ -1,9 +1,9 @@
-package net.rafkos.ojkipojki.client.protocol
+package net.rafkos.ojkipojki.client.view
 
 import net.rafkos.ojkipojki.client.ClientContext
+import net.rafkos.ojkipojki.client.application.ClientStateListener
+import net.rafkos.ojkipojki.client.protocol.SessionLifecycleListener
 import net.rafkos.ojkipojki.client.protocol.command.CommandTransmitter
-import net.rafkos.ojkipojki.client.view.InitializationProgressDialog
-import net.rafkos.ojkipojki.client.view.MainWindow
 import net.rafkos.ojkipojki.client.view.action.CommandDebouncer
 import net.rafkos.ojkipojki.client.view.state.SelectionState
 import net.rafkos.ojkipojki.client.view.state.ViewportState
@@ -18,17 +18,18 @@ import javax.swing.JOptionPane
 import javax.swing.SwingUtilities
 import javax.swing.Timer
 
-class ApplicationHandler(
+class MainWindowController(
     private val serverHost: String,
     private val selectionState: SelectionState,
     private val viewportState: ViewportState,
-) {
+) : SessionLifecycleListener, ClientStateListener {
+
     private var mainWindow: MainWindow? = null
     private var initDialog: InitializationProgressDialog? = null
     private var initDoneTimer: Timer? = null
     private var keyBlocker: KeyEventDispatcher? = null
 
-    fun onSessionReady(transmitter: CommandTransmitter) {
+    override fun onSessionReady(transmitter: CommandTransmitter) {
         val debouncer = CommandDebouncer(transmitter)
         ClientContext.commandTransmitter = transmitter
 
@@ -46,50 +47,7 @@ class ApplicationHandler(
         }
         window.glassPane = glassPane
 
-        ClientContext.onTokensUpdated = {
-            val tokens = ClientContext.stateRepository.findAllTokens()
-            SwingUtilities.invokeLater {
-                window.tokenAnimator.syncWithTokens(tokens)
-                selectionState.pruneAgainst(tokens)
-                window.toolbarPanel.refresh()
-            }
-        }
-        ClientContext.onTokensCountChanged = {
-            SwingUtilities.invokeLater {
-                window.spriteBagListPanel.rebuild()
-            }
-        }
-        ClientContext.onSpriteBagsUpdated = {
-            val sprites = ClientContext.stateRepository.findAllSprites()
-            SwingUtilities.invokeLater {
-                window.boardPanel.tokenRenderer.clearCache()
-                val localImages = ClientContext.localSpriteBagRegistry.images()
-                if (localImages.isNotEmpty()) window.boardPanel.tokenRenderer.seedImages(localImages)
-                window.spriteBagListPanel.refresh()
-                window.localSpriteBagListPanel.refresh()
-                Thread {
-                    val prewarm = window.boardPanel.tokenRenderer.buildPrewarm(sprites)
-                    SwingUtilities.invokeLater { window.boardPanel.tokenRenderer.installPrewarm(prewarm) }
-                }.apply { isDaemon = true; start() }
-            }
-        }
-        ClientContext.onPointersUpdated = {
-            val pointers = ClientContext.stateRepository.findAllPointers()
-            SwingUtilities.invokeLater {
-                window.pointerAnimator.syncWithPointers(pointers)
-            }
-        }
-        ClientContext.onConnectedClientsUpdated = { count ->
-            SwingUtilities.invokeLater {
-                window.statusBarPanel.updateClientCount(count)
-            }
-        }
-        ClientContext.onGameInitializationUpdate = { event ->
-            SwingUtilities.invokeLater {
-                val dialog = initDialog ?: return@invokeLater
-                handleInitEvent(event, window, dialog)
-            }
-        }
+        ClientContext.notifier.addListener(this)
 
         SwingUtilities.invokeLater {
             val dialog = InitializationProgressDialog(window)
@@ -99,7 +57,8 @@ class ApplicationHandler(
         }
     }
 
-    fun onSessionClosed() {
+    override fun onSessionClosed() {
+        ClientContext.notifier.removeListener(this)
         SwingUtilities.invokeLater {
             val win = mainWindow ?: return@invokeLater
             mainWindow = null
@@ -113,6 +72,62 @@ class ApplicationHandler(
             win.dispose()
             ClientContext.commandTransmitter = null
             System.exit(1)
+        }
+    }
+
+    override fun onTokensUpdated() {
+        val tokens = ClientContext.stateRepository.findAllTokens()
+        val win = mainWindow ?: return
+        SwingUtilities.invokeLater {
+            win.tokenAnimator.syncWithTokens(tokens)
+            selectionState.pruneAgainst(tokens)
+            win.toolbarPanel.refresh()
+        }
+    }
+
+    override fun onTokensCountChanged() {
+        val win = mainWindow ?: return
+        SwingUtilities.invokeLater {
+            win.spriteBagListPanel.rebuild()
+        }
+    }
+
+    override fun onSpriteBagsUpdated() {
+        val sprites = ClientContext.stateRepository.findAllSprites()
+        val win = mainWindow ?: return
+        SwingUtilities.invokeLater {
+            win.boardPanel.tokenRenderer.clearCache()
+            val localImages = ClientContext.localSpriteBagRegistry.images()
+            if (localImages.isNotEmpty()) win.boardPanel.tokenRenderer.seedImages(localImages)
+            win.spriteBagListPanel.refresh()
+            win.localSpriteBagListPanel.refresh()
+            Thread {
+                val prewarm = win.boardPanel.tokenRenderer.buildPrewarm(sprites)
+                SwingUtilities.invokeLater { win.boardPanel.tokenRenderer.installPrewarm(prewarm) }
+            }.apply { isDaemon = true; start() }
+        }
+    }
+
+    override fun onPointersUpdated() {
+        val pointers = ClientContext.stateRepository.findAllPointers()
+        val win = mainWindow ?: return
+        SwingUtilities.invokeLater {
+            win.pointerAnimator.syncWithPointers(pointers)
+        }
+    }
+
+    override fun onConnectedClientsUpdated(count: Int) {
+        val win = mainWindow ?: return
+        SwingUtilities.invokeLater {
+            win.statusBarPanel.updateClientCount(count)
+        }
+    }
+
+    override fun onGameInitializationUpdate(event: GameInitializationEvent) {
+        SwingUtilities.invokeLater {
+            val dialog = initDialog ?: return@invokeLater
+            val win = mainWindow ?: return@invokeLater
+            handleInitEvent(event, win, dialog)
         }
     }
 

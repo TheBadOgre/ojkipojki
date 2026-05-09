@@ -6,6 +6,6 @@ import net.rafkos.ojkipojki.shared.protocol.event.GameInitializationEvent
 
 class GameInitializationEventHandler : Handler<GameInitializationEvent> {
     override fun handle(action: GameInitializationEvent) {
-        ClientContext.onGameInitializationUpdate?.invoke(action)
+        ClientContext.notifier.notifyGameInitializationUpdate(action)
     }
 }
