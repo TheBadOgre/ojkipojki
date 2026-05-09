@@ -7,12 +7,16 @@ import net.rafkos.ojkipojki.shared.locale.LocaleService
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Graphics2D
+import java.awt.RenderingHints
 import java.awt.geom.AffineTransform
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
 import java.io.ByteArrayInputStream
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicReference
 import javax.imageio.ImageIO
+import javax.swing.SwingUtilities
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
@@ -35,9 +39,19 @@ class TokenRenderer {
     private val imageCache     = mutableMapOf<SpriteId, Pair<BufferedImage, BufferedImage>>()
     private val compositeCache = mutableMapOf<Pair<SpriteId, Boolean>, BufferedImage>()
 
+    // Scaled composite cache: rebuilt async after zoom stabilises.
+    // Swapped atomically; readyZoom < 0 means cache is stale/empty.
+    private val scaledComposites = AtomicReference<Map<Pair<SpriteId, Boolean>, BufferedImage>>(emptyMap())
+    @Volatile private var readyZoom: Double = -1.0
+    private val rebuildExecutor = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "token-scale-rebuild").apply { isDaemon = true }
+    }
+
     fun clearCache() {
         imageCache.clear()
         compositeCache.clear()
+        scaledComposites.set(emptyMap())
+        readyZoom = -1.0
     }
 
     fun seedImages(images: Map<SpriteId, Pair<BufferedImage, BufferedImage>>) {
@@ -67,6 +81,33 @@ class TokenRenderer {
     fun installPrewarm(result: PrewarmResult) {
         imageCache.putAll(result.images)
         compositeCache.putAll(result.composites)
+        scaledComposites.set(emptyMap())
+        readyZoom = -1.0
+    }
+
+    /** Rebuild the scaled composite cache at [zoom] in a background thread.
+     *  [onDone] is invoked on the EDT when the new cache is ready. */
+    fun scheduleScaledRebuild(zoom: Double, onDone: () -> Unit) {
+        readyZoom = -1.0
+        val snapshot = compositeCache.entries.map { it.key to it.value }
+        rebuildExecutor.submit {
+            val newCache = HashMap<Pair<SpriteId, Boolean>, BufferedImage>(snapshot.size * 2)
+            snapshot.parallelStream().forEach { (key, img) ->
+                val sw = (img.width  * zoom).toInt().coerceAtLeast(1)
+                val sh = (img.height * zoom).toInt().coerceAtLeast(1)
+                val scaled = BufferedImage(sw, sh, BufferedImage.TYPE_INT_ARGB_PRE)
+                val sg = scaled.createGraphics()
+                sg.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+                sg.drawImage(img, 0, 0, sw, sh, null)
+                sg.dispose()
+                synchronized(newCache) { newCache[key] = scaled }
+            }
+            // Volatile write after map is fully populated establishes happens-before.
+            scaledComposites.set(newCache)
+            readyZoom = zoom
+            SwingUtilities.invokeLater(onDone)
+        }
     }
 
     private fun toFastImage(src: BufferedImage): BufferedImage {
@@ -169,32 +210,60 @@ class TokenRenderer {
     }
 
     fun draw(g2: Graphics2D, token: Token, sprite: Sprite, selected: Boolean, locked: Boolean,
-             scaleX: Double = 1.0, scaleY: Double = 1.0) {
+             scaleX: Double = 1.0, scaleY: Double = 1.0, viewportZoom: Double = -1.0) {
         if (scaleX < 0.01 || scaleY < 0.01) return
         val (front, _) = getImages(sprite)
-        val w = front.width
-        val h = front.height
-        val composite = compositeCache.getOrPut(sprite.id to token.flipped) { buildComposite(sprite, token.flipped) }
+        val w  = front.width
+        val h  = front.height
         val ss = SHADOW_SPREAD
+        val key = sprite.id to token.flipped
+        val wx  = token.position.x.toDouble()
+        val wy  = token.position.y.toDouble()
+        val deg = Math.toRadians(token.rotation.degrees)
+
+        // Use pre-scaled composite when zoom matches the cached level (±1%).
+        // readyZoom volatile read first; scaledComposites.get() establishes happens-before.
+        val cz = readyZoom
+        val scaledComp: BufferedImage? = if (cz > 0 && viewportZoom > 0 &&
+                abs(viewportZoom / cz - 1.0) < 0.01) scaledComposites.get()[key] else null
+
+        val composite: BufferedImage
+        val imageAt = AffineTransform()
+        if (scaledComp != null) {
+            composite = scaledComp
+            // Scale(1/cz) cancels the pre-scaling so the image occupies the same world area.
+            imageAt.translate(wx, wy)
+            imageAt.rotate(deg)
+            imageAt.scale(scaleX / cz, scaleY / cz)
+            imageAt.translate(-composite.width / 2.0, -composite.height / 2.0)
+        } else {
+            composite = compositeCache.getOrPut(key) { buildComposite(sprite, token.flipped) }
+            imageAt.translate(wx, wy)
+            imageAt.rotate(deg)
+            imageAt.scale(scaleX, scaleY)
+            imageAt.translate(-w / 2.0 - ss, -h / 2.0 - ss)
+        }
+        // drawImage(img, at, obs) applies `at` without mutating g2's transform state.
+        g2.drawImage(composite, imageAt, null)
+
+        if (!selected && !locked) return
+
+        // Decorations always use original world-unit scale for consistent rect coordinates.
+        val decorAt = AffineTransform()
+        decorAt.translate(wx, wy)
+        decorAt.rotate(deg)
+        decorAt.scale(scaleX, scaleY)
+        decorAt.translate(-w / 2.0 - ss, -h / 2.0 - ss)
 
         val saved = g2.transform
-        val at = AffineTransform()
-        at.translate(token.position.x.toDouble(), token.position.y.toDouble())
-        at.rotate(Math.toRadians(token.rotation.degrees))
-        at.scale(scaleX, scaleY)
-        // Shift so the image portion (at ss,ss in composite) is centered on token position
-        at.translate(-w / 2.0 - ss, -h / 2.0 - ss)
-        g2.transform(at)
+        g2.transform(decorAt)
 
-        g2.drawImage(composite, 0, 0, null)
+        val ct  = g2.transform
+        val det = abs(ct.scaleX * ct.scaleY - ct.shearX * ct.shearY)
+        val pw  = (1.0 / sqrt(det)).toFloat()
 
         val prevColor  = g2.color
         val prevStroke = g2.stroke
-        // Derive pixel width from the actual combined transform so it stays 1px on screen
-        // regardless of viewport zoom, token flip scale, or HiDPI base scale.
-        val currentAt = g2.transform
-        val det = abs(currentAt.scaleX * currentAt.scaleY - currentAt.shearX * currentAt.shearY)
-        val pw = (1.0 / sqrt(det)).toFloat()
 
         if (selected) {
             g2.color  = Color(80, 160, 255)
@@ -213,7 +282,6 @@ class TokenRenderer {
 
         g2.color  = prevColor
         g2.stroke = prevStroke
-
         g2.transform = saved
     }
 
@@ -260,21 +328,20 @@ class TokenRenderer {
         val ty = (h - fm.height) / 2 + fm.ascent
         g2.drawString(text, tx, ty)
 
-        val prevStroke = g2.stroke
-        val prevColor = g2.color
-        val currentAt = g2.transform
-        val det = abs(currentAt.scaleX * currentAt.scaleY - currentAt.shearX * currentAt.shearY)
-        val pw = (1.0 / sqrt(det)).toFloat()
-
         if (selected) {
+            val prevStroke = g2.stroke
+            val prevColor = g2.color
+            val ct  = g2.transform
+            val det = abs(ct.scaleX * ct.scaleY - ct.shearX * ct.shearY)
+            val pw  = (1.0 / sqrt(det)).toFloat()
             g2.color = Color(80, 160, 255)
             g2.stroke = BasicStroke(pw, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
                 floatArrayOf(pw * 6, pw * 4), 0f)
             g2.drawRect(0, 0, w, h)
+            g2.stroke = prevStroke
+            g2.color = prevColor
         }
 
-        g2.stroke = prevStroke
-        g2.color = prevColor
         g2.transform = saved
     }
 }

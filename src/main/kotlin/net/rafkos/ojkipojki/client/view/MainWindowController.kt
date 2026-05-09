@@ -105,7 +105,7 @@ class MainWindowController(
             win.localSpriteBagListPanel.refresh()
             Thread {
                 val prewarm = win.boardPanel.tokenRenderer.buildPrewarm(sprites)
-                SwingUtilities.invokeLater { win.boardPanel.tokenRenderer.installPrewarm(prewarm) }
+                SwingUtilities.invokeLater { win.boardPanel.applyPrewarm(prewarm) }
             }.apply { isDaemon = true; start() }
         }
     }

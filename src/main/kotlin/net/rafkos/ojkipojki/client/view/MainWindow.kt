@@ -89,7 +89,7 @@ class MainWindow(
         statusBarPanel = StatusBarPanel(serverIp)
 
         // Sidebar: toggle strip + sprite panel
-        val toggleBtn = JButton("«")
+        val toggleBtn = JButton("»")
         toggleBtn.margin = Insets(4, 2, 4, 2)
         toggleBtn.isFocusPainted = false
         toggleBtn.toolTipText = LocaleService.get("sidebar.collapse")
@@ -130,11 +130,11 @@ class MainWindow(
             if (sidebarExpanded) {
                 lastDividerLocation = splitPane.dividerLocation
                 splitPane.dividerLocation = splitPane.width - stripPanel.width - splitPane.dividerSize
-                toggleBtn.text = "»"
+                toggleBtn.text = "«"
                 toggleBtn.toolTipText = LocaleService.get("sidebar.expand")
             } else {
                 splitPane.dividerLocation = lastDividerLocation
-                toggleBtn.text = "«"
+                toggleBtn.text = "»"
                 toggleBtn.toolTipText = LocaleService.get("sidebar.collapse")
             }
             sidebarExpanded = !sidebarExpanded

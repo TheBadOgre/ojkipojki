@@ -2,6 +2,7 @@ package net.rafkos.ojkipojki.client.view.panel
 
 import net.rafkos.ojkipojki.client.application.StateRepository
 import net.rafkos.ojkipojki.client.view.input.DragRectOverlay
+import net.rafkos.ojkipojki.client.view.render.PrewarmResult
 import net.rafkos.ojkipojki.client.view.render.TokenRenderer
 import net.rafkos.ojkipojki.client.view.state.BackgroundColorState
 import net.rafkos.ojkipojki.client.view.state.PointerAnimator
@@ -89,14 +90,22 @@ class BoardPanel(
         animating = true
     }
 
+    /** Installs prewarmed composites and kicks off a scaled rebuild at current zoom. */
+    fun applyPrewarm(result: PrewarmResult) {
+        tokenRenderer.installPrewarm(result)
+        tokenRenderer.scheduleScaledRebuild(viewportState.zoom) { repaint() }
+    }
+
     /** Marks the view as actively interacting (pan/drag/zoom/rotate).
      *  While set, paint uses NEAREST interpolation and disables antialiasing
-     *  for big throughput gain on many tokens. Auto-clears 150ms after last call. */
+     *  for big throughput gain on many tokens. Auto-clears 150ms after last call.
+     *  On idle, triggers async scaled-composite rebuild at the stable zoom level. */
     fun markInteracting() {
         interacting = true
         interactionEndTimer?.stop()
         interactionEndTimer = Timer(150) {
             interacting = false
+            tokenRenderer.scheduleScaledRebuild(viewportState.zoom) { repaint() }
             repaint()
         }.apply { isRepeats = false; start() }
     }
@@ -144,7 +153,7 @@ class BoardPanel(
                 screenCy + screenR < 0 || screenCy - screenR > ph) continue
 
             val (sx, sy) = tokenAnimator.flipScale(token.id)
-            tokenRenderer.draw(g2, visual, sprite, selectionState.contains(token.id), token.locked, sx, sy)
+            tokenRenderer.draw(g2, visual, sprite, selectionState.contains(token.id), token.locked, sx, sy, zoom)
         }
 
         for (pointer in lastPointers) {
