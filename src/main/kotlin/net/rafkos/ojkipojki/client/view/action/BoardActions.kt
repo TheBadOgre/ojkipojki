@@ -25,6 +25,7 @@ class BoardActions(
     private val debouncer: CommandDebouncer,
     private val tokenAnimator: TokenAnimator,
     private val confirmer: OverwriteConfirmer = SwingOverwriteConfirmer(),
+    private val onLocalRegistryReloaded: () -> Unit = {},
 ) {
     fun selectAll() = selectionState.replaceWith(stateRepository.findAllTokens().map { it.id })
     fun deselectAll() = selectionState.clear()
@@ -95,6 +96,7 @@ class BoardActions(
 
     fun refreshBags() {
         runBlocking { ClientContext.localSpriteBagRegistry.reload() }
+        onLocalRegistryReloaded()
         val stateIds = stateRepository.findAllSpriteBags().map { it.id }.toSet()
         val toResend = ClientContext.localSpriteBagRegistry.bags().filter { it.id in stateIds }
         if (toResend.isNotEmpty()) transmitter.transmit(UploadSpriteBagsCommand(toResend))

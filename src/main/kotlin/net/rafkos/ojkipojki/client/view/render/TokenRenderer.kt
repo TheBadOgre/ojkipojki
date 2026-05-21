@@ -99,6 +99,8 @@ class TokenRenderer {
                 val sg = scaled.createGraphics()
                 sg.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                     RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+                sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON)
                 sg.drawImage(img, 0, 0, sw, sh, null)
                 sg.dispose()
                 synchronized(newCache) { newCache[key] = scaled }

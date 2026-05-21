@@ -115,7 +115,7 @@ class BoardPanel(
         val g2 = g as Graphics2D
         g2.setRenderingHint(
             RenderingHints.KEY_ANTIALIASING,
-            if (interacting) RenderingHints.VALUE_ANTIALIAS_OFF else RenderingHints.VALUE_ANTIALIAS_ON,
+            RenderingHints.VALUE_ANTIALIAS_OFF,
         )
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
