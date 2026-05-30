@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.atLeast
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
@@ -183,6 +185,9 @@ class ClientSessionManagerTest {
 
         assertFalse(manager.getAllClientIds().contains("c1"))
         assertTrue(received.filterIsInstance<AuthResultEvent>().any { !it.accepted })
+
+        // Verify no game state was broadcast to the rejected client
+        verify(fixture.eventBroadcastService, never()).broadcast(any(), eq("c1"))
     }
 
     @Test
