@@ -15,7 +15,7 @@ import org.apache.logging.log4j.LogManager
 object ClientRunner {
     private val log = LogManager.getLogger(ClientRunner::class.java)
 
-    fun startClient(serverHost: String, serverPort: Int) {
+    fun startClient(serverHost: String, serverPort: Int, password: String = "") {
         log.info("Starting client, connecting to $serverHost:$serverPort")
 
         ClientContext.localSpriteBagRegistry = LocalSpriteBagRegistry().also { runBlocking { it.reload() } }
@@ -27,7 +27,7 @@ object ClientRunner {
         val viewportState  = ViewportState()
 
         val controller = MainWindowController(serverHost, selectionState, viewportState)
-        val clientSession = ClientSession(controller)
+        val clientSession = ClientSession(controller, password)
         val serverConnection = ServerConnection(serverHost, serverPort, clientSession)
 
         serverConnection.connect()
