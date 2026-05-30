@@ -13,10 +13,7 @@ import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
 import java.io.ByteArrayInputStream
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicReference
 import javax.imageio.ImageIO
-import javax.swing.SwingUtilities
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
@@ -39,19 +36,14 @@ class TokenRenderer {
     private val imageCache     = mutableMapOf<SpriteId, Pair<BufferedImage, BufferedImage>>()
     private val compositeCache = mutableMapOf<Pair<SpriteId, Boolean>, BufferedImage>()
 
-    // Scaled composite cache: rebuilt async after zoom stabilises.
-    // Swapped atomically; readyZoom < 0 means cache is stale/empty.
-    private val scaledComposites = AtomicReference<Map<Pair<SpriteId, Boolean>, BufferedImage>>(emptyMap())
-    @Volatile private var readyZoom: Double = -1.0
-    private val rebuildExecutor = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "token-scale-rebuild").apply { isDaemon = true }
-    }
+    // Mip pyramid per composite: index 0 is the full composite, each level half-size.
+    // Zoom-independent — built once, lazily, on first draw of a token.
+    private val mipCache = mutableMapOf<Pair<SpriteId, Boolean>, List<BufferedImage>>()
 
     fun clearCache() {
         imageCache.clear()
         compositeCache.clear()
-        scaledComposites.set(emptyMap())
-        readyZoom = -1.0
+        mipCache.clear()
     }
 
     fun seedImages(images: Map<SpriteId, Pair<BufferedImage, BufferedImage>>) {
@@ -81,35 +73,43 @@ class TokenRenderer {
     fun installPrewarm(result: PrewarmResult) {
         imageCache.putAll(result.images)
         compositeCache.putAll(result.composites)
-        scaledComposites.set(emptyMap())
-        readyZoom = -1.0
+        mipCache.clear()
     }
 
-    /** Rebuild the scaled composite cache at [zoom] in a background thread.
-     *  [onDone] is invoked on the EDT when the new cache is ready. */
-    fun scheduleScaledRebuild(zoom: Double, onDone: () -> Unit) {
-        readyZoom = -1.0
-        val snapshot = compositeCache.entries.map { it.key to it.value }
-        rebuildExecutor.submit {
-            val newCache = HashMap<Pair<SpriteId, Boolean>, BufferedImage>(snapshot.size * 2)
-            snapshot.parallelStream().forEach { (key, img) ->
-                val sw = (img.width  * zoom).toInt().coerceAtLeast(1)
-                val sh = (img.height * zoom).toInt().coerceAtLeast(1)
-                val scaled = BufferedImage(sw, sh, BufferedImage.TYPE_INT_ARGB_PRE)
-                val sg = scaled.createGraphics()
-                sg.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                    RenderingHints.VALUE_INTERPOLATION_BILINEAR)
-                sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON)
-                sg.drawImage(img, 0, 0, sw, sh, null)
-                sg.dispose()
-                synchronized(newCache) { newCache[key] = scaled }
-            }
-            // Volatile write after map is fully populated establishes happens-before.
-            scaledComposites.set(newCache)
-            readyZoom = zoom
-            SwingUtilities.invokeLater(onDone)
+    /** Mip levels are zoom-independent and built lazily on first draw, so no per-zoom
+     *  rebuild is needed. Kept as the caller's idle hook: just repaint. */
+    fun scheduleScaledRebuild(@Suppress("UNUSED_PARAMETER") zoom: Double, onDone: () -> Unit) {
+        onDone()
+    }
+
+    // Halving pyramid down to 1px. Index 0 is the full composite. Each level is a
+    // high-quality half-step of the previous, so drawing always downsamples <=2x —
+    // a single large-ratio step samples only 2x2 source pixels → aliasing/blur.
+    private fun buildMips(base: BufferedImage): List<BufferedImage> {
+        val list = ArrayList<BufferedImage>()
+        list.add(base)
+        var cur = base
+        while (cur.width > 1 && cur.height > 1) {
+            val nw = (cur.width / 2).coerceAtLeast(1)
+            val nh = (cur.height / 2).coerceAtLeast(1)
+            cur = scaleStep(cur, nw, nh)
+            list.add(cur)
         }
+        return list
+    }
+
+    private fun scaleStep(src: BufferedImage, w: Int, h: Int): BufferedImage {
+        val out = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE)
+        val g = out.createGraphics()
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+            RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        g.setRenderingHint(RenderingHints.KEY_RENDERING,
+            RenderingHints.VALUE_RENDER_QUALITY)
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+            RenderingHints.VALUE_ANTIALIAS_ON)
+        g.drawImage(src, 0, 0, w, h, null)
+        g.dispose()
+        return out
     }
 
     private fun toFastImage(src: BufferedImage): BufferedImage {
@@ -223,30 +223,30 @@ class TokenRenderer {
         val wy  = token.position.y.toDouble()
         val deg = Math.toRadians(token.rotation.degrees)
 
-        // Use pre-scaled composite when zoom matches the cached level (±1%).
-        // readyZoom volatile read first; scaledComposites.get() establishes happens-before.
-        val cz = readyZoom
-        val scaledComp: BufferedImage? = if (cz > 0 && viewportZoom > 0 &&
-                abs(viewportZoom / cz - 1.0) < 0.01) scaledComposites.get()[key] else null
-
-        val composite: BufferedImage
-        val imageAt = AffineTransform()
-        if (scaledComp != null) {
-            composite = scaledComp
-            // Scale(1/cz) cancels the pre-scaling so the image occupies the same world area.
-            imageAt.translate(wx, wy)
-            imageAt.rotate(deg)
-            imageAt.scale(scaleX / cz, scaleY / cz)
-            imageAt.translate(-composite.width / 2.0, -composite.height / 2.0)
-        } else {
-            composite = compositeCache.getOrPut(key) { buildComposite(sprite, token.flipped) }
-            imageAt.translate(wx, wy)
-            imageAt.rotate(deg)
-            imageAt.scale(scaleX, scaleY)
-            imageAt.translate(-w / 2.0 - ss, -h / 2.0 - ss)
+        // Mip selection: pick the smallest level still at least the on-screen size, then
+        // let g2 downsample <=2x from it. A single full-res -> tiny step is what caused the
+        // blur; capping every draw at <=2x keeps tokens crisp at any zoom and during
+        // gestures. effScale is the world->screen factor (g2 already holds scale(zoom);
+        // viewportZoom carries it here, scaleX is the per-token extra, normally 1.0).
+        val mips = mipCache.getOrPut(key) {
+            buildMips(compositeCache.getOrPut(key) { buildComposite(sprite, token.flipped) })
         }
+        val base = mips[0]
+        val effScale = if (viewportZoom > 0) viewportZoom else 1.0
+        val targetPx = base.width * effScale * abs(scaleX)
+        var level = 0
+        while (level < mips.size - 1 && mips[level + 1].width >= targetPx) level++
+        val mip = mips[level]
+        // Bring the chosen level back to the full composite's world size (= 2^level).
+        val levelScale = base.width.toDouble() / mip.width
+
+        val imageAt = AffineTransform()
+        imageAt.translate(wx, wy)
+        imageAt.rotate(deg)
+        imageAt.scale(scaleX * levelScale, scaleY * levelScale)
+        imageAt.translate(-mip.width / 2.0, -mip.height / 2.0)
         // drawImage(img, at, obs) applies `at` without mutating g2's transform state.
-        g2.drawImage(composite, imageAt, null)
+        g2.drawImage(mip, imageAt, null)
 
         if (!selected && !locked) return
 
