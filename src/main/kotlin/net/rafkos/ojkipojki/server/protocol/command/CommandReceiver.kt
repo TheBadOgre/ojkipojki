@@ -15,6 +15,13 @@ class CommandReceiver(
     private val inputStream = ObjectInputStream(socket.getInputStream())
     @Volatile private var running = true
 
+    fun receiveOne(): Command? = try {
+        @Suppress("UNCHECKED_CAST")
+        inputStream.readObject() as? Command
+    } catch (e: Exception) {
+        null
+    }
+
     fun start() {
         Thread {
             while (running) {

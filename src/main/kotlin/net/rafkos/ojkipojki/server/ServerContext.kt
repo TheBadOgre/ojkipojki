@@ -14,4 +14,5 @@ object ServerContext {
     lateinit var pointerRepository: PointerRepository
     lateinit var clientColorRegistry: ClientColorRegistry
     lateinit var commandExecutor: ExecutorService
+    var password: String? = null
 }

@@ -1,6 +1,9 @@
 package net.rafkos.ojkipojki.server.protocol
 
+import net.rafkos.ojkipojki.server.ServerContext
 import net.rafkos.ojkipojki.server.support.serverContextFixture
+import net.rafkos.ojkipojki.shared.protocol.command.AuthCommand
+import net.rafkos.ojkipojki.shared.protocol.event.AuthResultEvent
 import net.rafkos.ojkipojki.shared.protocol.event.ConnectedClientsUpdateEvent
 import net.rafkos.ojkipojki.shared.protocol.event.SpriteBagsUpdatedEvent
 import net.rafkos.ojkipojki.support.await
@@ -13,6 +16,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.atLeast
 import org.mockito.kotlin.verify
+import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.net.Socket
 
@@ -30,15 +34,19 @@ class ClientSessionManagerTest {
     @AfterEach
     fun teardown() {
         openSockets.forEach { runCatching { it.close() } }
+        ServerContext.password = null
     }
 
-    private fun connect(clientId: String): Pair<Socket, Socket> {
+    private fun connect(clientId: String, password: String = ""): Pair<Socket, Socket> {
         val (clientSocket, acceptedSocket) = socketPair()
         openSockets += clientSocket
         openSockets += acceptedSocket
 
-        // Send OOS stream header from client side before manager creates OIS in CommandReceiver
-        val bgThread = Thread { ObjectOutputStream(clientSocket.getOutputStream()).flush() }.also { it.start() }
+        val bgThread = Thread {
+            val oos = ObjectOutputStream(clientSocket.getOutputStream()).also { it.flush() }
+            oos.writeObject(AuthCommand(password))
+            oos.flush()
+        }.also { it.start() }
         manager.onClientConnected(clientId, acceptedSocket)
         bgThread.join(1000)
         return clientSocket to acceptedSocket
@@ -144,5 +152,43 @@ class ClientSessionManagerTest {
         assertTrue(missingIdx >= 0) { "MissingSpriteBagsEvent not sent unicast" }
         assertTrue(missingIdx > spriteBagsIdx) { "MissingSpriteBagsEvent must come after SpriteBagsUpdatedEvent" }
         assertEquals("c1", unicastClients[missingIdx])
+    }
+
+    @Test
+    fun `correct password is accepted — session registered`() {
+        ServerContext.password = "secret"
+        connect("c1", "secret")
+        assertTrue(manager.getAllClientIds().contains("c1"))
+    }
+
+    @Test
+    fun `wrong password is rejected — session not registered`() {
+        ServerContext.password = "secret"
+
+        val (clientSocket, acceptedSocket) = socketPair()
+        openSockets += clientSocket
+        openSockets += acceptedSocket
+
+        val received = mutableListOf<Any?>()
+        val bgThread = Thread {
+            val oos = ObjectOutputStream(clientSocket.getOutputStream()).also { it.flush() }
+            oos.writeObject(AuthCommand("wrong"))
+            oos.flush()
+            val ois = ObjectInputStream(clientSocket.getInputStream())
+            received += ois.readObject()
+        }.also { it.start() }
+
+        manager.onClientConnected("c1", acceptedSocket)
+        bgThread.join(1000)
+
+        assertFalse(manager.getAllClientIds().contains("c1"))
+        assertTrue(received.filterIsInstance<AuthResultEvent>().any { !it.accepted })
+    }
+
+    @Test
+    fun `no password set — any client accepted`() {
+        ServerContext.password = null
+        connect("c1", "anything")
+        assertTrue(manager.getAllClientIds().contains("c1"))
     }
 }

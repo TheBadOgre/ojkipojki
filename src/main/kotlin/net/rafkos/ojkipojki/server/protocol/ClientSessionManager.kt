@@ -4,6 +4,8 @@ import net.rafkos.ojkipojki.server.ServerContext
 import net.rafkos.ojkipojki.server.application.MissingSpriteBagsBroadcaster
 import net.rafkos.ojkipojki.server.protocol.command.CommandReceiver
 import net.rafkos.ojkipojki.server.protocol.event.EventTransmitter
+import net.rafkos.ojkipojki.shared.protocol.command.AuthCommand
+import net.rafkos.ojkipojki.shared.protocol.event.AuthResultEvent
 import net.rafkos.ojkipojki.shared.protocol.event.ConnectedClientsUpdateEvent
 import net.rafkos.ojkipojki.shared.protocol.event.GameInitializationEvent
 import net.rafkos.ojkipojki.shared.protocol.event.GameInitializationEvent.Status
@@ -19,14 +21,26 @@ class ClientSessionManager : ClientConnectionListener {
     private val sessions = ConcurrentHashMap<String, ClientSession>()
 
     override fun onClientConnected(clientId: String, socket: Socket) {
-        ServerContext.clientColorRegistry.assign(clientId)
-
         val transmitter = EventTransmitter(socket)
         val receiver = CommandReceiver(
             socket = socket,
             clientId = clientId,
             onDisconnected = { onClientDisconnected(clientId) },
         )
+
+        val authCmd = receiver.receiveOne()
+        val serverPassword = ServerContext.password
+        val accepted = serverPassword == null || (authCmd is AuthCommand && authCmd.password == serverPassword)
+
+        transmitter.transmit(AuthResultEvent(accepted))
+
+        if (!accepted) {
+            log.info("Client $clientId rejected: wrong password")
+            runCatching { socket.close() }
+            return
+        }
+
+        ServerContext.clientColorRegistry.assign(clientId)
         sessions[clientId] = ClientSession(receiver, transmitter)
         receiver.start()
         log.info("Session created for client $clientId")

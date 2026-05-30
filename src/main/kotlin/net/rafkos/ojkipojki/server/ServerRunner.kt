@@ -27,13 +27,14 @@ object ServerRunner {
     /**
      * @param saveFile File to load from; null = start fresh (no save loaded).
      */
-    fun startServer(serverPort: Int, saveFile: File? = GamePersistence.autoSaveFile) {
+    fun startServer(serverPort: Int, saveFile: File? = GamePersistence.autoSaveFile, password: String? = null) {
         log.info("Starting server on port $serverPort")
 
         ServerContext.modelRepository = ModelRepository()
         ServerContext.pointerRepository = PointerRepository()
         ServerContext.clientColorRegistry = ClientColorRegistry()
         ServerContext.commandExecutor = Executors.newSingleThreadExecutor()
+        ServerContext.password = password
 
         val saveLoaded = if (saveFile != null) {
             log.info("Starting from saved game: $saveFile")
