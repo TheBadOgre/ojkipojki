@@ -21,8 +21,10 @@ import net.rafkos.ojkipojki.client.view.state.TokenAnimator
 import net.rafkos.ojkipojki.client.view.state.ViewportState
 import net.rafkos.ojkipojki.shared.AppIcon
 import net.rafkos.ojkipojki.shared.locale.LocaleService
+import net.rafkos.ojkipojki.client.view.icon.Icons
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.Insets
 import java.awt.event.ActionEvent
 import javax.swing.JLabel
@@ -76,7 +78,7 @@ class MainWindow(
         )
 
         spriteBagListPanel = SpriteBagListPanel(spawnHandler, stateRepository)
-        localSpriteBagListPanel = LocalSpriteBagListPanel(stateRepository, actions::uploadLocalBag, actions::uploadAllLocal, actions::refreshBags)
+        localSpriteBagListPanel = LocalSpriteBagListPanel(stateRepository, actions::uploadLocalBag)
 
         val mouseController = BoardMouseController(boardPanel, stateRepository, selectionState, viewportState, debouncer, tokenRenderer, tokenAnimator, onRmbClick = actions::flip)
         val wheelController = BoardWheelController(boardPanel, viewportState, selectionState, stateRepository, debouncer)
@@ -113,7 +115,28 @@ class MainWindow(
         }
         sidebarContainer.add(stripPanel, BorderLayout.WEST)
 
-        val sidebarSplit = JSplitPane(JSplitPane.VERTICAL_SPLIT, spriteBagListPanel, localSpriteBagListPanel)
+        val uploadAllBtn = JButton(Icons.uploadAllBags)
+        uploadAllBtn.toolTipText = LocaleService.get("spritebag.uploadAll")
+        uploadAllBtn.isFocusPainted = false
+        uploadAllBtn.margin = Insets(2, 2, 2, 2)
+        uploadAllBtn.addActionListener { actions.uploadAllLocal() }
+
+        val reloadBtn = JButton(Icons.refreshBags)
+        reloadBtn.toolTipText = LocaleService.get("toolbar.refreshBags")
+        reloadBtn.isFocusPainted = false
+        reloadBtn.margin = Insets(2, 2, 2, 2)
+        reloadBtn.addActionListener { actions.refreshBags() }
+
+        val localButtonBar = JPanel(FlowLayout(FlowLayout.LEFT, 2, 2))
+        localButtonBar.isOpaque = false
+        localButtonBar.add(uploadAllBtn)
+        localButtonBar.add(reloadBtn)
+
+        val localWrapper = JPanel(BorderLayout())
+        localWrapper.add(localButtonBar, BorderLayout.NORTH)
+        localWrapper.add(localSpriteBagListPanel, BorderLayout.CENTER)
+
+        val sidebarSplit = JSplitPane(JSplitPane.VERTICAL_SPLIT, spriteBagListPanel, localWrapper)
         sidebarSplit.resizeWeight = 0.66
         sidebarSplit.isContinuousLayout = true
         sidebarSplit.border = null

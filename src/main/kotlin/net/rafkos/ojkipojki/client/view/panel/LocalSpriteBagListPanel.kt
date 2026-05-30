@@ -18,8 +18,6 @@ import kotlin.math.sqrt
 class LocalSpriteBagListPanel(
     private val stateRepository: StateRepository,
     private val onUpload: (SpriteBag) -> Unit,
-    private val onUploadAll: () -> Unit,
-    private val onRefresh: () -> Unit,
 ) : JPanel(BorderLayout()) {
 
     var previewSize = 64
@@ -41,16 +39,6 @@ class LocalSpriteBagListPanel(
             BorderFactory.createEmptyBorder(6, 4, 6, 4),
             BorderFactory.createTitledBorder(LocaleService.get("spritebag.localPanel.title"))
         )
-
-        val refreshBtn = iconButton(Icons.refreshBags, LocaleService.get("toolbar.refreshBags")) { onRefresh() }
-        val uploadAllBtn = iconButton(Icons.uploadAllBags, LocaleService.get("spritebag.uploadAll")) { onUploadAll() }
-
-        val headerBar = JPanel(FlowLayout(FlowLayout.LEFT, 2, 2))
-        headerBar.isOpaque = false
-        headerBar.border = BorderFactory.createMatteBorder(0, 0, 1, 0, javax.swing.UIManager.getColor("Separator.foreground"))
-        headerBar.add(uploadAllBtn)
-        headerBar.add(refreshBtn)
-        add(headerBar, BorderLayout.NORTH)
 
         val scroll = JScrollPane(contentPanel)
         scroll.horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
