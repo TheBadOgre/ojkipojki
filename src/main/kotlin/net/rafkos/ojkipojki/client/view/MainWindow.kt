@@ -100,8 +100,11 @@ class MainWindow(
         val stripPanel = JPanel(BorderLayout())
         stripPanel.add(toggleBtn, BorderLayout.NORTH)
 
+        var sidebarCollapsed = false
         val sidebarContainer = object : JPanel(BorderLayout()) {
-            override fun getMinimumSize(): Dimension = Dimension(stripPanel.preferredSize.width, 0)
+            override fun getMinimumSize(): Dimension =
+                if (sidebarCollapsed) Dimension(stripPanel.preferredSize.width, 0)
+                else Dimension(250, 0)
         }
         sidebarContainer.add(stripPanel, BorderLayout.WEST)
         val sidebarSplit = JSplitPane(JSplitPane.VERTICAL_SPLIT, spriteBagListPanel, localSpriteBagListPanel)
@@ -132,10 +135,18 @@ class MainWindow(
         toggleBtn.addActionListener {
             if (sidebarExpanded) {
                 lastDividerLocation = splitPane.dividerLocation
+                sidebarCollapsed = true
+                sidebarSplit.isVisible = false
+                sliderPanel.isVisible = false
+                sidebarContainer.revalidate()
                 splitPane.dividerLocation = splitPane.width - stripPanel.width - splitPane.dividerSize
                 toggleBtn.text = "«"
                 toggleBtn.toolTipText = LocaleService.get("sidebar.expand")
             } else {
+                sidebarCollapsed = false
+                sidebarSplit.isVisible = true
+                sliderPanel.isVisible = true
+                sidebarContainer.revalidate()
                 splitPane.dividerLocation = lastDividerLocation
                 toggleBtn.text = "»"
                 toggleBtn.toolTipText = LocaleService.get("sidebar.collapse")
