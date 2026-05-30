@@ -30,7 +30,7 @@ class ClientSessionManager : ClientConnectionListener {
 
         val authCmd = receiver.receiveOne()
         val serverPassword = ServerContext.password
-        val accepted = serverPassword == null || (authCmd is AuthCommand && authCmd.password == serverPassword)
+        val accepted = authCmd is AuthCommand && authCmd.password == (serverPassword ?: "")
 
         transmitter.transmit(AuthResultEvent(accepted))
 

@@ -191,9 +191,33 @@ class ClientSessionManagerTest {
     }
 
     @Test
-    fun `no password set — any client accepted`() {
+    fun `no password set — empty password accepted`() {
         ServerContext.password = null
-        connect("c1", "anything")
+        connect("c1", "")
         assertTrue(manager.getAllClientIds().contains("c1"))
+    }
+
+    @Test
+    fun `no password set — non-empty client password rejected`() {
+        ServerContext.password = null
+
+        val (clientSocket, acceptedSocket) = socketPair()
+        openSockets += clientSocket
+        openSockets += acceptedSocket
+
+        val received = mutableListOf<Any?>()
+        val bgThread = Thread {
+            val oos = ObjectOutputStream(clientSocket.getOutputStream()).also { it.flush() }
+            oos.writeObject(AuthCommand("something"))
+            oos.flush()
+            val ois = ObjectInputStream(clientSocket.getInputStream())
+            received += ois.readObject()
+        }.also { it.start() }
+
+        manager.onClientConnected("c1", acceptedSocket)
+        bgThread.join(1000)
+
+        assertFalse(manager.getAllClientIds().contains("c1"))
+        assertTrue(received.filterIsInstance<AuthResultEvent>().any { !it.accepted })
     }
 }
