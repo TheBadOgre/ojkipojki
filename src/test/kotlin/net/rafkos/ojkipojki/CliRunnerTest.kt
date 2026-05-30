@@ -89,6 +89,24 @@ class CliRunnerTest {
         assertError(result)
     }
 
+    @Test
+    fun `password flag is parsed correctly`() {
+        val result = CliRunner.parseArgs(arrayOf("--server", "--start-fresh", "--password", "mypass"))
+        assertSuccess(result) { it -> assertEquals("mypass", it.password) }
+    }
+
+    @Test
+    fun `no password flag yields null password`() {
+        val result = CliRunner.parseArgs(arrayOf("--server", "--start-fresh"))
+        assertSuccess(result) { it -> assertNull(it.password) }
+    }
+
+    @Test
+    fun `password flag without argument is an error`() {
+        val result = CliRunner.parseArgs(arrayOf("--server", "--start-fresh", "--password"))
+        assertError(result)
+    }
+
 private fun assertSuccess(result: CliRunner.ParseResult, block: (CliRunner.ParseResult.Success) -> Unit) {
         assertInstanceOf(CliRunner.ParseResult.Success::class.java, result)
         block(result as CliRunner.ParseResult.Success)

@@ -9,7 +9,7 @@ object CliRunner {
     private val log = LogManager.getLogger(CliRunner::class.java)
 
     sealed class ParseResult {
-        data class Success(val port: Int, val saveFile: File?) : ParseResult()
+        data class Success(val port: Int, val saveFile: File?, val password: String? = null) : ParseResult()
         data class Error(val message: String) : ParseResult()
     }
 
@@ -54,7 +54,17 @@ object CliRunner {
             12001
         }
 
-        return ParseResult.Success(port, saveFile)
+        val passwordIdx = args.indexOf("--password")
+        val password: String? = if (passwordIdx >= 0) {
+            if (passwordIdx + 1 >= args.size) {
+                return ParseResult.Error("--password requires a string argument")
+            }
+            args[passwordIdx + 1]
+        } else {
+            null
+        }
+
+        return ParseResult.Success(port, saveFile, password)
     }
 
     fun run(args: Array<String>) {
@@ -65,7 +75,7 @@ object CliRunner {
                 return
             }
             is ParseResult.Success -> {
-                ServerRunner.startServer(result.port, result.saveFile)
+                ServerRunner.startServer(result.port, result.saveFile, result.password)
                 try {
                     Thread.currentThread().join()
                 } catch (_: InterruptedException) {
