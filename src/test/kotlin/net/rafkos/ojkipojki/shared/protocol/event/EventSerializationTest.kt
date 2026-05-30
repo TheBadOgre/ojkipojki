@@ -102,4 +102,18 @@ class EventSerializationTest {
         val result = roundTrip(event)
         assertEquals(event.ids, result.ids)
     }
+
+    @Test
+    fun `AuthResultEvent round-trip accepted`() {
+        val event = AuthResultEvent(true)
+        val result = roundTrip(event)
+        assertEquals(event, result)
+    }
+
+    @Test
+    fun `AuthResultEvent round-trip rejected`() {
+        val event = AuthResultEvent(false)
+        val result = roundTrip(event)
+        assertEquals(event, result)
+    }
 }

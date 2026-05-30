@@ -74,4 +74,18 @@ class CommandSerializationTest {
         val result = roundTrip(cmd)
         assertEquals(cmd, result)
     }
+
+    @Test
+    fun `AuthCommand round-trip`() {
+        val cmd = AuthCommand("secret123")
+        val result = roundTrip(cmd)
+        assertEquals(cmd, result)
+    }
+
+    @Test
+    fun `AuthCommand round-trip empty password`() {
+        val cmd = AuthCommand("")
+        val result = roundTrip(cmd)
+        assertEquals(cmd, result)
+    }
 }
