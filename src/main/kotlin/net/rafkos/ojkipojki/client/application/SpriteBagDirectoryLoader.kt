@@ -1,6 +1,7 @@
 package net.rafkos.ojkipojki.client.application
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Semaphore
 import net.rafkos.ojkipojki.shared.AppDirs
 import net.rafkos.ojkipojki.shared.domain.SpriteBag
 import net.rafkos.ojkipojki.shared.domain.SpriteId
@@ -19,10 +20,13 @@ object SpriteBagDirectoryLoader {
             ?: return@coroutineScope SpriteLoadResult(emptyList(), emptyMap())
 
         val dispatcher = Dispatchers.Default
+        // Shared across all directories so total concurrent bag decodes (and their source
+        // sheets) stay bounded regardless of how many subdirs exist.
+        val gate = Semaphore(SpriteLoader.DEFAULT_BAG_PERMITS)
 
         val results = subdirs.map { dir ->
             async(dispatcher) {
-                SpriteLoader.loadSprites(dir, dispatcher)
+                SpriteLoader.loadSprites(dir, dispatcher, gate)
             }
         }.awaitAll().flatten()
 

@@ -9,6 +9,8 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import javax.imageio.ImageIO
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 data class SpriteBagLoadResult(
     val bag: SpriteBag,
@@ -16,7 +18,15 @@ data class SpriteBagLoadResult(
 )
 
 object SpriteLoader {
-    suspend fun loadSprites(directory: File, dispatcher: CoroutineDispatcher = Dispatchers.Default): List<SpriteBagLoadResult> = coroutineScope {
+    // Each bag decode holds three full source sheets (front/back/mask) in memory at once.
+    // Without a cap, every bag across every directory decodes concurrently → big RAM spike.
+    const val DEFAULT_BAG_PERMITS = 4
+
+    suspend fun loadSprites(
+        directory: File,
+        dispatcher: CoroutineDispatcher = Dispatchers.Default,
+        gate: Semaphore = Semaphore(DEFAULT_BAG_PERMITS),
+    ): List<SpriteBagLoadResult> = coroutineScope {
 
         val filesByBagId = directory.listFiles { f ->
             f.isFile && f.extension.lowercase() in listOf("png", "jpg", "jpeg")
@@ -31,30 +41,32 @@ object SpriteLoader {
 
         filesByBagId.map { (bagIdStr, files) ->
             async(dispatcher) {
+                gate.withPermit {
 
-                val frontFile = files.find { it.nameWithoutExtension.endsWith("_front") }
-                val backFile  = files.find { it.nameWithoutExtension.endsWith("_back") }
-                val maskFile  = files.find { it.nameWithoutExtension.endsWith("_mask") }
+                    val frontFile = files.find { it.nameWithoutExtension.endsWith("_front") }
+                    val backFile  = files.find { it.nameWithoutExtension.endsWith("_back") }
+                    val maskFile  = files.find { it.nameWithoutExtension.endsWith("_mask") }
 
-                if (frontFile == null || backFile == null || maskFile == null)
-                    return@async null
+                    if (frontFile == null || backFile == null || maskFile == null)
+                        return@withPermit null
 
-                val spriteBagId = SpriteBagId(bagIdStr)
+                    val spriteBagId = SpriteBagId(bagIdStr)
 
-                val frontImage = ImageIO.read(frontFile)
-                val backImage  = ImageIO.read(backFile)
-                val maskImage  = ImageIO.read(maskFile)
+                    val frontImage = ImageIO.read(frontFile)
+                    val backImage  = ImageIO.read(backFile)
+                    val maskImage  = ImageIO.read(maskFile)
 
-                val loaded = extractSprites(spriteBagId, frontImage, backImage, maskImage, dispatcher)
+                    val loaded = extractSprites(spriteBagId, frontImage, backImage, maskImage, dispatcher)
 
-                SpriteBagLoadResult(
-                    bag = SpriteBag(
-                        id = spriteBagId,
-                        groupName = directory.name,
-                        sprites = loaded.map { it.sprite },
-                    ),
-                    images = loaded.associate { it.sprite.id to Pair(it.front, it.back) },
-                )
+                    SpriteBagLoadResult(
+                        bag = SpriteBag(
+                            id = spriteBagId,
+                            groupName = directory.name,
+                            sprites = loaded.map { it.sprite },
+                        ),
+                        images = loaded.associate { it.sprite.id to Pair(it.front, it.back) },
+                    )
+                }
             }
         }.awaitAll().filterNotNull()
     }

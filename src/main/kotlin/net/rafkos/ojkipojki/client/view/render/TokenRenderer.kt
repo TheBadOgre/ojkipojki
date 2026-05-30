@@ -20,7 +20,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 data class PrewarmResult(
-    val images: Map<SpriteId, Pair<BufferedImage, BufferedImage>>,
+    val dims: Map<SpriteId, Pair<Int, Int>>,
     val composites: Map<Pair<SpriteId, Boolean>, BufferedImage>,
 )
 
@@ -33,45 +33,51 @@ class TokenRenderer {
         private val OFFSETS = intArrayOf(-1, 0, 1)
     }
 
-    private val imageCache     = mutableMapOf<SpriteId, Pair<BufferedImage, BufferedImage>>()
     private val compositeCache = mutableMapOf<Pair<SpriteId, Boolean>, BufferedImage>()
 
     // Mip pyramid per composite: index 0 is the full composite, each level half-size.
     // Zoom-independent — built once, lazily, on first draw of a token.
     private val mipCache = mutableMapOf<Pair<SpriteId, Boolean>, List<BufferedImage>>()
 
+    // Sprite (width,height) only. Decoded front/back are NOT retained — they exist just
+    // long enough to bake the composites/mips, which hold all the pixels we ever draw.
+    // draw/hitTest/culling need only dimensions, so that's all we keep.
+    private val spriteDims = mutableMapOf<SpriteId, Pair<Int, Int>>()
+
     fun clearCache() {
-        imageCache.clear()
         compositeCache.clear()
         mipCache.clear()
+        spriteDims.clear()
     }
 
     fun seedImages(images: Map<SpriteId, Pair<BufferedImage, BufferedImage>>) {
         images.forEach { (id, pair) ->
-            imageCache[id] = Pair(toFastImage(pair.first), toFastImage(pair.second))
+            val front = toFastImage(pair.first)
+            val back  = toFastImage(pair.second)
+            spriteDims[id] = front.width to front.height
+            val baseLayer = buildBaseLayer(front)
+            compositeCache[id to false] = compositeWithMain(baseLayer, front, front.width, front.height)
+            compositeCache[id to true]  = compositeWithMain(baseLayer, back,  front.width, front.height)
+            // front/back drop out of scope here and become garbage-collectable.
         }
     }
 
     fun buildPrewarm(sprites: List<Sprite>): PrewarmResult {
-        val localImages    = ConcurrentHashMap<SpriteId, Pair<BufferedImage, BufferedImage>>()
         val localComposites = ConcurrentHashMap<Pair<SpriteId, Boolean>, BufferedImage>()
+        val localDims       = ConcurrentHashMap<SpriteId, Pair<Int, Int>>()
         sprites.parallelStream().forEach { sprite ->
-            val images = localImages.computeIfAbsent(sprite.id) {
-                Pair(
-                    toFastImage(ImageIO.read(ByteArrayInputStream(sprite.frontImageBytes))),
-                    toFastImage(ImageIO.read(ByteArrayInputStream(sprite.backImageBytes))),
-                )
-            }
-            val (front, back) = images
+            val front = toFastImage(ImageIO.read(ByteArrayInputStream(sprite.frontImageBytes)))
+            val back  = toFastImage(ImageIO.read(ByteArrayInputStream(sprite.backImageBytes)))
+            localDims[sprite.id] = front.width to front.height
             val baseLayer = buildBaseLayer(front)
             localComposites[sprite.id to false] = compositeWithMain(baseLayer, front, front.width, front.height)
             localComposites[sprite.id to true]  = compositeWithMain(baseLayer, back,  front.width, front.height)
         }
-        return PrewarmResult(localImages, localComposites)
+        return PrewarmResult(localDims, localComposites)
     }
 
     fun installPrewarm(result: PrewarmResult) {
-        imageCache.putAll(result.images)
+        spriteDims.putAll(result.dims)
         compositeCache.putAll(result.composites)
         mipCache.clear()
     }
@@ -120,17 +126,20 @@ class TokenRenderer {
         return out
     }
 
-    fun getImages(sprite: Sprite): Pair<BufferedImage, BufferedImage> =
-        imageCache.getOrPut(sprite.id) {
-            val front = toFastImage(ImageIO.read(ByteArrayInputStream(sprite.frontImageBytes)))
-            val back  = toFastImage(ImageIO.read(ByteArrayInputStream(sprite.backImageBytes)))
-            Pair(front, back)
+    /** Sprite size in source pixels. Cached from composite builds; falls back to decoding
+     *  just the front if a draw races ahead of prewarm (rare). */
+    fun dimensions(sprite: Sprite): Pair<Int, Int> =
+        spriteDims.getOrPut(sprite.id) {
+            val front = ImageIO.read(ByteArrayInputStream(sprite.frontImageBytes))
+            front.width to front.height
         }
 
     private fun buildComposite(sprite: Sprite, flipped: Boolean): BufferedImage {
-        val (front, back) = getImages(sprite)
+        val front = toFastImage(ImageIO.read(ByteArrayInputStream(sprite.frontImageBytes)))
+        spriteDims[sprite.id] = front.width to front.height
         val baseLayer = buildBaseLayer(front)
-        return compositeWithMain(baseLayer, if (flipped) back else front, front.width, front.height)
+        val main = if (flipped) toFastImage(ImageIO.read(ByteArrayInputStream(sprite.backImageBytes))) else front
+        return compositeWithMain(baseLayer, main, front.width, front.height)
     }
 
     // Scatter shadow + dark edge from front into a (w+2ss)×(h+2ss) IntArray.
@@ -214,9 +223,7 @@ class TokenRenderer {
     fun draw(g2: Graphics2D, token: Token, sprite: Sprite, selected: Boolean, locked: Boolean,
              scaleX: Double = 1.0, scaleY: Double = 1.0, viewportZoom: Double = -1.0) {
         if (scaleX < 0.01 || scaleY < 0.01) return
-        val (front, _) = getImages(sprite)
-        val w  = front.width
-        val h  = front.height
+        val (w, h) = dimensions(sprite)
         val ss = SHADOW_SPREAD
         val key = sprite.id to token.flipped
         val wx  = token.position.x.toDouble()
@@ -288,9 +295,7 @@ class TokenRenderer {
     }
 
     fun hitTest(token: Token, sprite: Sprite, worldX: Double, worldY: Double): Boolean {
-        val (front, _) = getImages(sprite)
-        val w = front.width
-        val h = front.height
+        val (w, h) = dimensions(sprite)
         val dx = worldX - token.position.x
         val dy = worldY - token.position.y
         val rad = -Math.toRadians(token.rotation.degrees)

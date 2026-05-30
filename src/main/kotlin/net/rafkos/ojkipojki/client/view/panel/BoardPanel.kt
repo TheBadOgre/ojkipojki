@@ -145,10 +145,10 @@ class BoardPanel(
                 continue
             }
 
-            val (frontImg, _) = tokenRenderer.getImages(sprite)
+            val (fw, fh) = tokenRenderer.dimensions(sprite)
             val screenCx = (visual.position.x + ox) * zoom + pw / 2
             val screenCy = (visual.position.y + oy) * zoom + ph / 2
-            val screenR = sqrt(frontImg.width.toDouble().pow(2) + frontImg.height.toDouble().pow(2)) / 2 * zoom
+            val screenR = sqrt(fw.toDouble().pow(2) + fh.toDouble().pow(2)) / 2 * zoom
             if (screenCx + screenR < 0 || screenCx - screenR > pw ||
                 screenCy + screenR < 0 || screenCy - screenR > ph) continue
 

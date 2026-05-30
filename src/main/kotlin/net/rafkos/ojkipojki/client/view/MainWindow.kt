@@ -137,10 +137,19 @@ class MainWindow(
         localWrapper.add(localSpriteBagListPanel, BorderLayout.CENTER)
 
         val sidebarSplit = JSplitPane(JSplitPane.VERTICAL_SPLIT, spriteBagListPanel, localWrapper)
-        sidebarSplit.resizeWeight = 0.66
+        sidebarSplit.resizeWeight = 0.72
         sidebarSplit.isContinuousLayout = true
         sidebarSplit.border = null
         sidebarSplit.dividerSize = 4
+        // resizeWeight governs later resizes; the proportional divider only applies once
+        // the pane has a real size, so bias the initial split on first layout: "tokens in
+        // game" (top) starts larger than the local library (bottom).
+        sidebarSplit.addComponentListener(object : java.awt.event.ComponentAdapter() {
+            override fun componentResized(e: java.awt.event.ComponentEvent) {
+                sidebarSplit.setDividerLocation(0.72)
+                sidebarSplit.removeComponentListener(this)
+            }
+        })
 
         val sizeSlider = JSlider(24, 128, 64)
         val sliderPanel = JPanel(BorderLayout(4, 0))
