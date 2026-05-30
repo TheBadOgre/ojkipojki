@@ -7,7 +7,7 @@ import java.awt.Insets
 import javax.swing.*
 
 class ConnectPanel(
-    private val onConnect: (host: String, port: Int, onFailure: () -> Unit) -> Unit
+    private val onConnect: (host: String, port: Int, password: String, onFailure: () -> Unit) -> Unit
 ) : JPanel(GridBagLayout()) {
     override fun getMaximumSize() = java.awt.Dimension(Int.MAX_VALUE, preferredSize.height)
     init {
@@ -20,6 +20,8 @@ class ConnectPanel(
         val portLabel = JLabel(LocaleService.get("launcher.connect.port"))
         val hostField = JTextField("127.0.0.1", 12)
         val portField = JTextField("12001", 6)
+        val passwordLabel = JLabel(LocaleService.get("launcher.connect.password"))
+        val passwordField = JPasswordField()
         val connectButton = JButton(LocaleService.get("launcher.connect.button"))
 
         val gbc = GridBagConstraints().apply { insets = Insets(4, 6, 4, 6) }
@@ -34,14 +36,21 @@ class ConnectPanel(
         gbc.gridx = 1; gbc.gridy = 1; gbc.weightx = 0.0
         add(portField, gbc)
 
-        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2; gbc.fill = GridBagConstraints.NONE; gbc.anchor = GridBagConstraints.WEST; gbc.weightx = 0.0
+        add(passwordLabel, gbc)
+
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        add(passwordField, gbc)
+
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         add(connectButton, gbc)
 
         connectButton.addActionListener {
             val host = hostField.text.trim()
             val port = portField.text.trim().toIntOrNull() ?: return@addActionListener
+            val password = String(passwordField.password)
             connectButton.isEnabled = false
-            onConnect(host, port) { connectButton.isEnabled = true }
+            onConnect(host, port, password) { connectButton.isEnabled = true }
         }
     }
 }

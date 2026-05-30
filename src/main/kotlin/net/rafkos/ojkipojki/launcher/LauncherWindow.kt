@@ -17,14 +17,14 @@ class LauncherWindow : JFrame(LocaleService.get("launcher.title")) {
 
         val root = JPanel()
         root.layout = BoxLayout(root, BoxLayout.Y_AXIS)
-        root.add(ConnectPanel { host, port, onFailure ->
-            controller.connectToServer(host, port, onFailure)
+        root.add(ConnectPanel { host, port, password, onFailure ->
+            controller.connectToServer(host, port, password, onFailure)
         })
         root.add(HostPanel(
             GamePersistence.listSaveFiles(),
             GamePersistence.listScenarioFiles()
-        ) { port, saveFile, alsoConnect ->
-            controller.hostServer(port, saveFile, alsoConnect)
+        ) { port, saveFile, alsoConnect, password ->
+            controller.hostServer(port, saveFile, alsoConnect, password)
         })
 
         contentPane.add(root)

@@ -17,7 +17,7 @@ import javax.swing.*
 class HostPanel(
     saveFiles: List<File>,
     scenarioFiles: List<File>,
-    private val onHost: (port: Int, saveFile: File?, alsoConnect: Boolean) -> Unit
+    private val onHost: (port: Int, saveFile: File?, alsoConnect: Boolean, password: String) -> Unit
 ) : JPanel(GridBagLayout()) {
     private val allFiles: List<File> = saveFiles + scenarioFiles
 
@@ -50,7 +50,6 @@ class HostPanel(
                 if (idx >= 0 && pressedAlreadySelected) savesList.clearSelection()
             }
         }
-        // Must be inserted before the L&F listener so mousePressed fires before selection changes
         val existingListeners = savesList.mouseListeners.toList()
         existingListeners.forEach { savesList.removeMouseListener(it) }
         savesList.addMouseListener(deselectionListener)
@@ -66,6 +65,8 @@ class HostPanel(
 
         val portLabel = JLabel(LocaleService.get("launcher.host.port"))
         val portField = JTextField("12001")
+        val passwordLabel = JLabel(LocaleService.get("launcher.host.password"))
+        val passwordField = JPasswordField()
         val hostButton = JButton(LocaleService.get("launcher.host.button"))
         val alsoConnectCheckbox = JCheckBox(LocaleService.get("launcher.host.alsoConnect"), true)
 
@@ -86,17 +87,24 @@ class HostPanel(
         gbc.gridx = 0; gbc.gridy = 4; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         add(portField, gbc)
 
-        gbc.gridx = 0; gbc.gridy = 5; gbc.fill = GridBagConstraints.HORIZONTAL
+        gbc.gridx = 0; gbc.gridy = 5; gbc.anchor = GridBagConstraints.WEST; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        add(passwordLabel, gbc)
+
+        gbc.gridx = 0; gbc.gridy = 6; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        add(passwordField, gbc)
+
+        gbc.gridx = 0; gbc.gridy = 7; gbc.fill = GridBagConstraints.HORIZONTAL
         add(hostButton, gbc)
 
-        gbc.gridx = 0; gbc.gridy = 6; gbc.fill = GridBagConstraints.HORIZONTAL
+        gbc.gridx = 0; gbc.gridy = 8; gbc.fill = GridBagConstraints.HORIZONTAL
         add(alsoConnectCheckbox, gbc)
 
         hostButton.addActionListener {
             val port = portField.text.trim().toIntOrNull() ?: return@addActionListener
             val selectedIdx = savesList.selectedIndex
             val selectedFile = if (selectedIdx >= 0 && selectedIdx < allFiles.size) allFiles[selectedIdx] else null
-            onHost(port, selectedFile, alsoConnectCheckbox.isSelected)
+            val password = String(passwordField.password)
+            onHost(port, selectedFile, alsoConnectCheckbox.isSelected, password)
         }
     }
 }
