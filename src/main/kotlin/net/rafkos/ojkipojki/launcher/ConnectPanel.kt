@@ -9,6 +9,7 @@ import javax.swing.*
 class ConnectPanel(
     private val onConnect: (host: String, port: Int, onFailure: () -> Unit) -> Unit
 ) : JPanel(GridBagLayout()) {
+    override fun getMaximumSize() = java.awt.Dimension(Int.MAX_VALUE, preferredSize.height)
     init {
         border = BorderFactory.createCompoundBorder(
             BorderFactory.createEmptyBorder(8, 8, 4, 8),

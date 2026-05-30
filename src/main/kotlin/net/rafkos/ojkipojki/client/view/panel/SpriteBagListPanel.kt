@@ -56,14 +56,15 @@ class SpriteBagListPanel(
 
     init {
         preferredSize = Dimension(372, 0)
-
-        val headerLabel = JLabel(LocaleService.get("spritebag.gamePanel.title"))
-        headerLabel.font = headerLabel.font.deriveFont(Font.BOLD, 12f)
-        headerLabel.border = BorderFactory.createEmptyBorder(4, 6, 4, 6)
-        add(headerLabel, BorderLayout.NORTH)
+        minimumSize = Dimension(0, 200)
+        border = BorderFactory.createCompoundBorder(
+            BorderFactory.createEmptyBorder(6, 4, 6, 4),
+            BorderFactory.createTitledBorder(LocaleService.get("spritebag.gamePanel.title"))
+        )
 
         val scroll = JScrollPane(contentPanel)
         scroll.horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        scroll.border = null
         add(scroll, BorderLayout.CENTER)
     }
 

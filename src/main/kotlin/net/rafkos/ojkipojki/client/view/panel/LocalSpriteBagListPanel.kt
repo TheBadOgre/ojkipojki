@@ -36,24 +36,25 @@ class LocalSpriteBagListPanel(
     }
 
     init {
-        val headerBar = JPanel(BorderLayout(4, 0))
-        headerBar.border = BorderFactory.createEmptyBorder(4, 6, 4, 6)
-        val titleLabel = JLabel(LocaleService.get("spritebag.localPanel.title"))
-        titleLabel.font = titleLabel.font.deriveFont(Font.BOLD, 12f)
+        minimumSize = Dimension(0, 200)
+        border = BorderFactory.createCompoundBorder(
+            BorderFactory.createEmptyBorder(6, 4, 6, 4),
+            BorderFactory.createTitledBorder(LocaleService.get("spritebag.localPanel.title"))
+        )
 
         val refreshBtn = iconButton(Icons.refreshBags, LocaleService.get("toolbar.refreshBags")) { onRefresh() }
         val uploadAllBtn = iconButton(Icons.uploadAllBags, LocaleService.get("spritebag.uploadAll")) { onUploadAll() }
-        val btnPanel = JPanel(FlowLayout(FlowLayout.RIGHT, 2, 0))
-        btnPanel.isOpaque = false
-        btnPanel.add(refreshBtn)
-        btnPanel.add(uploadAllBtn)
 
-        headerBar.add(titleLabel, BorderLayout.CENTER)
-        headerBar.add(btnPanel, BorderLayout.EAST)
+        val headerBar = JPanel(FlowLayout(FlowLayout.LEFT, 2, 2))
+        headerBar.isOpaque = false
+        headerBar.border = BorderFactory.createMatteBorder(0, 0, 1, 0, javax.swing.UIManager.getColor("Separator.foreground"))
+        headerBar.add(uploadAllBtn)
+        headerBar.add(refreshBtn)
         add(headerBar, BorderLayout.NORTH)
 
         val scroll = JScrollPane(contentPanel)
         scroll.horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        scroll.border = null
         add(scroll, BorderLayout.CENTER)
     }
 

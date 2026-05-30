@@ -60,6 +60,7 @@ class MainWindow(
         defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
         AppIcon.image?.let { iconImage = it }
         setSize(1200, 800)
+        minimumSize = Dimension(1024, 960)
 
         val tokenRenderer = TokenRenderer()
         val backgroundColorState = BackgroundColorState()
@@ -98,6 +99,10 @@ class MainWindow(
         toggleBtn.toolTipText = LocaleService.get("sidebar.collapse")
 
         val stripPanel = JPanel(BorderLayout())
+        stripPanel.border = BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 0, 1, javax.swing.UIManager.getColor("Separator.foreground")),
+            BorderFactory.createEmptyBorder(4, 4, 4, 4)
+        )
         stripPanel.add(toggleBtn, BorderLayout.NORTH)
 
         var sidebarCollapsed = false
@@ -107,23 +112,29 @@ class MainWindow(
                 else Dimension(250, 0)
         }
         sidebarContainer.add(stripPanel, BorderLayout.WEST)
+
         val sidebarSplit = JSplitPane(JSplitPane.VERTICAL_SPLIT, spriteBagListPanel, localSpriteBagListPanel)
         sidebarSplit.resizeWeight = 0.66
         sidebarSplit.isContinuousLayout = true
-        sidebarContainer.add(sidebarSplit, BorderLayout.CENTER)
+        sidebarSplit.border = null
+        sidebarSplit.dividerSize = 4
 
         val sizeSlider = JSlider(24, 128, 64)
         val sliderPanel = JPanel(BorderLayout(4, 0))
         sliderPanel.border = BorderFactory.createEmptyBorder(4, 6, 4, 6)
         sliderPanel.add(JLabel(LocaleService.get("spritebag.size")), BorderLayout.WEST)
         sliderPanel.add(sizeSlider, BorderLayout.CENTER)
-        sidebarContainer.add(sliderPanel, BorderLayout.SOUTH)
         sizeSlider.addChangeListener {
             spriteBagListPanel.previewSize = sizeSlider.value
             localSpriteBagListPanel.previewSize = sizeSlider.value
             spriteBagListPanel.rebuild()
             localSpriteBagListPanel.rebuild()
         }
+
+        val rightPanel = JPanel(BorderLayout())
+        rightPanel.add(sidebarSplit, BorderLayout.CENTER)
+        rightPanel.add(sliderPanel, BorderLayout.SOUTH)
+        sidebarContainer.add(rightPanel, BorderLayout.CENTER)
 
         val splitPane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, boardPanel, sidebarContainer)
         splitPane.resizeWeight = 1.0
@@ -136,16 +147,14 @@ class MainWindow(
             if (sidebarExpanded) {
                 lastDividerLocation = splitPane.dividerLocation
                 sidebarCollapsed = true
-                sidebarSplit.isVisible = false
-                sliderPanel.isVisible = false
+                rightPanel.isVisible = false
                 sidebarContainer.revalidate()
                 splitPane.dividerLocation = splitPane.width - stripPanel.width - splitPane.dividerSize
                 toggleBtn.text = "«"
                 toggleBtn.toolTipText = LocaleService.get("sidebar.expand")
             } else {
                 sidebarCollapsed = false
-                sidebarSplit.isVisible = true
-                sliderPanel.isVisible = true
+                rightPanel.isVisible = true
                 sidebarContainer.revalidate()
                 splitPane.dividerLocation = lastDividerLocation
                 toggleBtn.text = "»"
