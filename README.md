@@ -2,7 +2,7 @@
 
 ![preview](preview.png)
 
-A minimalistic tabletop simulator for **Neuroshima HEX**. Official armies are not included — supply your own sprite sheets.
+A minimalistic tabletop simulator for **Neuroshima HEX**. Official armies are not included — supply your own sprite sheets. Create and paint custom armies with [pifpafers](https://github.com/TheBadOgre/pifpafers), a compatible companion tool for preparing sprites and print-ready sheets.
 
 Client-server over TCP sockets. Server owns all mutable state; client holds a read-only mirror updated via events.
 
