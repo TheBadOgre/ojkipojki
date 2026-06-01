@@ -1,4 +1,4 @@
-# Neuroshima HEX Army Tester
+# Neuroshima Hex Army Tester
 
 ![preview](preview.png)
 
