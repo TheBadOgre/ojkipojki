@@ -1,4 +1,4 @@
-# ojkipojki
+# Neuroshima HEX Army Tester
 
 ![preview](preview.png)
 
